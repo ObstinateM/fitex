@@ -3,9 +3,9 @@ import type { GenerationResult } from "@/lib/types";
 import PdfViewer from "../components/PdfViewer";
 import AnswerCard from "../components/AnswerCard";
 import StatusBar from "../components/StatusBar";
-import { getApiKey, getTemplate, getModel, getProfileImage } from "@/lib/storage";
+import { getApiKey, getTemplate, getModel, getContext, getProfileImage, addHistoryEntry } from "@/lib/storage";
 import { streamChatCompletion, chatCompletion } from "@/lib/openai";
-import { buildReduceToOnePagePrompt, buildMatchScorePrompt } from "@/lib/prompts";
+import { buildReduceToOnePagePrompt, buildMatchScorePrompt, buildFeedbackRefinementPrompt } from "@/lib/prompts";
 import { compileLatex, countPdfPages } from "@/lib/latex";
 
 interface ResultsProps {
@@ -24,6 +24,10 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
   const [matchScore, setMatchScore] = useState<{ score: number; strengths: string[]; gaps: string[] } | null>(null);
   const [scoringMatch, setScoringMatch] = useState(false);
   const [showMatch, setShowMatch] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const [refining, setRefining] = useState(false);
+  const [refineStatus, setRefineStatus] = useState("");
+  const [refineCooldown, setRefineCooldown] = useState(false);
 
   function downloadPdf() {
     if (!result.pdfBlob) return;
@@ -41,6 +45,81 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
     window.open(url, "_blank");
     // Delay revocation so the new tab has time to load the blob
     setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  async function refineWithFeedback() {
+    if (refining || refineCooldown || !result.modifiedTex || !feedback.trim()) return;
+    setRefining(true);
+    setRefineStatus("Refining CV...");
+    try {
+      const [apiKey, template, model, context, profileImage] = await Promise.all([
+        getApiKey(),
+        getTemplate(),
+        getModel(),
+        getContext(),
+        getProfileImage(),
+      ]);
+      if (!apiKey || !template) {
+        setRefineStatus("Missing API key or template.");
+        setTimeout(() => setRefineStatus(""), 3000);
+        return;
+      }
+      let refinedTex = "";
+      await streamChatCompletion(
+        apiKey,
+        model,
+        [{ role: "user", content: buildFeedbackRefinementPrompt(result.modifiedTex, result.jobDescription, feedback, context) }],
+        { onChunk: (chunk) => { refinedTex += chunk; } },
+      );
+      refinedTex = refinedTex.replace(/^```(?:latex|tex)?\n?/, "").replace(/\n?```\s*$/, "").trim();
+
+      setRefineStatus("Recompiling PDF...");
+      const templateForCompile = profileImage
+        ? { ...template, auxFiles: [...template.auxFiles, profileImage] }
+        : template;
+      const compileResult = await compileLatex({ template: templateForCompile, modifiedMainContent: refinedTex });
+
+      if (compileResult.pdfBlob) {
+        const updatedResult = {
+          ...result,
+          pdfBlob: compileResult.pdfBlob,
+          modifiedTex: refinedTex,
+          latexErrors: compileResult.errors,
+        };
+        setResult(updatedResult);
+        setFeedback("");
+        setRefineStatus("");
+        setMatchScore(null);
+        // Save refined version to history
+        try {
+          const buffer = await compileResult.pdfBlob.arrayBuffer();
+          const bytes = new Uint8Array(buffer);
+          const chunks: string[] = [];
+          for (let i = 0; i < bytes.length; i += 8192) chunks.push(String.fromCharCode(...bytes.subarray(i, i + 8192)));
+          const pdfBase64 = btoa(chunks.join(""));
+          await addHistoryEntry({
+            id: crypto.randomUUID(),
+            createdAt: Date.now(),
+            jobDescription: result.jobDescription.slice(0, 200),
+            pdfBase64,
+            modifiedTex: refinedTex,
+            answers: result.answers,
+            latexErrors: compileResult.errors,
+          });
+        } catch { /* quota exceeded — skip */ }
+      } else {
+        setRefineStatus("Recompilation failed — kept previous version.");
+        setTimeout(() => setRefineStatus(""), 3000);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Refinement failed";
+      setRefineStatus(`Error: ${message}`);
+      setTimeout(() => setRefineStatus(""), 5000);
+    } finally {
+      setRefining(false);
+      setRefineCooldown(true);
+      setTimeout(() => setRefineCooldown(false), 2000);
+    }
   }
 
   async function analyzeMatch() {
@@ -283,6 +362,32 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
               {result.modifiedTex}
             </pre>
           )}
+        </div>
+      )}
+
+      {/* Refine with feedback */}
+      {result.modifiedTex && (
+        <div className="mb-4">
+          <p className="mb-1.5 text-sm font-medium text-gray-700">Refine with feedback</p>
+          <textarea
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            placeholder="E.g. Make the summary shorter, emphasize leadership more, remove the internship from 2019..."
+            rows={3}
+            disabled={refining}
+            className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-blue-400 focus:outline-none disabled:opacity-50"
+          />
+          {refining && <div className="mt-2"><StatusBar message={refineStatus} /></div>}
+          {!refining && refineStatus && (
+            <p className="mt-1 text-xs text-orange-600">{refineStatus}</p>
+          )}
+          <button
+            onClick={refineWithFeedback}
+            disabled={!feedback.trim() || refining || refineCooldown}
+            className="mt-2 w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {refining ? "Refining..." : "Apply Refinement"}
+          </button>
         </div>
       )}
 
