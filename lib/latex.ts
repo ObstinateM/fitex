@@ -13,7 +13,29 @@ interface CompileResult {
   errors: string[];
 }
 
+const DANGEROUS_LATEX_PATTERNS = [
+  /\\write\s*18/,             // \write18{cmd}
+  /\\immediate\s*\\write/,    // \immediate\write18{cmd}
+  /\\input\s*\|/,             // \input|"cmd"
+  /\\openout/,                // \openout file writing
+  /\\openin/,                 // \openin file reading
+  /\\catcode/,                // \catcode manipulation (can enable shell escape)
+];
+
+function containsDangerousCommands(tex: string): string | null {
+  for (const pattern of DANGEROUS_LATEX_PATTERNS) {
+    const match = tex.match(pattern);
+    if (match) return match[0];
+  }
+  return null;
+}
+
 export async function compileLatex(options: CompileOptions): Promise<CompileResult> {
+  const dangerous = containsDangerousCommands(options.modifiedMainContent);
+  if (dangerous) {
+    return { pdfBlob: null, errors: [`Blocked dangerous LaTeX command: ${dangerous}`] };
+  }
+
   const compiler = options.compiler ?? await getCompiler();
 
   const resources: Array<{ path?: string; main?: boolean; content?: string; file?: string }> = [
