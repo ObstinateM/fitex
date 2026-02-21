@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import type { GenerationResult, SelectedElement, ElementTag } from "@/lib/types";
+import type { GenerationResult, SelectedElement, ElementTag, OpenAIModel } from "@/lib/types";
 import { sendToContentScript, getActiveTabId, onMessage } from "@/lib/messaging";
 import { getApiKey, getTemplate, getModel, getContext, getProfileImage } from "@/lib/storage";
 import { streamChatCompletion, chatCompletion } from "@/lib/openai";
@@ -8,6 +8,14 @@ import { compileLatex } from "@/lib/latex";
 import ElementList from "../components/ElementList";
 import GuidanceEditor from "../components/GuidanceEditor";
 import StatusBar from "../components/StatusBar";
+
+const MODEL_PRICING: Record<OpenAIModel, { input: number; output: number }> = {
+  "gpt-5.2":      { input: 2.0,  output: 8.0 },
+  "gpt-4.1":      { input: 2.0,  output: 8.0 },
+  "gpt-4.1-mini": { input: 0.4,  output: 1.6 },
+  "gpt-4.1-nano": { input: 0.1,  output: 0.4 },
+  "o4-mini":      { input: 1.1,  output: 4.4 },
+};
 
 interface SelectorProps {
   previousElements: SelectedElement[];
@@ -23,7 +31,38 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
   const [status, setStatus] = useState("");
   const [generating, setGenerating] = useState(false);
   const [cooldown, setCooldown] = useState(false);
+  const [costEstimate, setCostEstimate] = useState<{ tokens: number; cost: number } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (elements.length === 0) {
+      setCostEstimate(null);
+      return;
+    }
+    let cancelled = false;
+    async function estimate() {
+      const [template, model] = await Promise.all([getTemplate(), getModel()]);
+      if (cancelled) return;
+      const templateTokens = template ? Math.ceil(template.mainContent.length / 4) : 0;
+      const jobDescTokens = elements
+        .filter((el) => el.tag === "job-description")
+        .reduce((sum, el) => sum + Math.ceil((el.text.length + (el.guidance?.length ?? 0)) / 4), 0);
+      const guidanceTokens = Math.ceil(guidance.length / 4);
+      const systemOverhead = 500;
+      const inputTokens = templateTokens + jobDescTokens + guidanceTokens + systemOverhead;
+      const outputTokens = templateTokens;
+      const questionCount = elements.filter((el) => el.tag === "question").length;
+      const qInput = questionCount * (templateTokens + jobDescTokens + 300);
+      const qOutput = questionCount * 500;
+      const totalInput = inputTokens + qInput;
+      const totalOutput = outputTokens + qOutput;
+      const pricing = MODEL_PRICING[model];
+      const cost = (totalInput / 1_000_000) * pricing.input + (totalOutput / 1_000_000) * pricing.output;
+      setCostEstimate({ tokens: totalInput + totalOutput, cost });
+    }
+    estimate();
+    return () => { cancelled = true; };
+  }, [elements, guidance]);
 
   // Listen for messages from content script
   useEffect(() => {
@@ -255,6 +294,12 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
         <p className="mb-3 text-sm text-red-600">{status}</p>
       )}
       {generating && <div className="mb-3"><StatusBar message={status} /></div>}
+
+      {costEstimate && !generating && (
+        <p className="mb-2 text-center text-xs text-gray-400">
+          ~{costEstimate.tokens.toLocaleString()} tokens &middot; ~{costEstimate.cost < 0.005 ? "<$0.01" : `$${costEstimate.cost.toFixed(2)}`}
+        </p>
+      )}
 
       <button
         onClick={generate}
