@@ -18,7 +18,6 @@ export default function PdfViewer({ blob }: PdfViewerProps) {
   return (
     <iframe
       src={url}
-      sandbox="allow-same-origin"
       className="h-[400px] w-full rounded-lg border border-gray-200"
       title="Tailored CV Preview"
     />

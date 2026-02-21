@@ -10,6 +10,9 @@ export default defineConfig({
       "https://api.openai.com/*",
       "https://latex.ytotech.com/*",
     ],
+    content_security_policy: {
+      extension_pages: "script-src 'self'; object-src 'self'; frame-src blob: 'self';",
+    },
     side_panel: {
       default_path: "sidepanel/index.html",
     },
