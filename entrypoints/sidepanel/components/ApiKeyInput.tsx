@@ -11,6 +11,11 @@ export default function ApiKeyInput({ onValidated }: ApiKeyInputProps) {
 
   async function validate() {
     setError("");
+    const trimmed = key.trim();
+    if (!trimmed.startsWith("sk-") || trimmed.length < 20) {
+      setError("Invalid format. API keys start with \"sk-\" and are at least 20 characters.");
+      return;
+    }
     setValidating(true);
     try {
       const res = await fetch("https://api.openai.com/v1/models", {

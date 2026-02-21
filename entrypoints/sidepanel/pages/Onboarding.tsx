@@ -11,18 +11,12 @@ interface OnboardingProps {
 
 export default function Onboarding({ onComplete }: OnboardingProps) {
   const [step, setStep] = useState<1 | 2>(1);
-  const [savedKey, setSavedKey] = useState("");
   const [template, setTemplateState] = useState<TexTemplate | null>(null);
   const [profileImageState, setProfileImageState] = useState<AuxFile | null>(null);
 
   async function handleKeyValidated(key: string) {
     await setApiKey(key);
-    setSavedKey(key);
     setStep(2);
-  }
-
-  async function handleTemplateUploaded(tmpl: TexTemplate) {
-    setTemplateState(tmpl);
   }
 
   async function handleComplete() {
@@ -55,7 +49,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
 
       {step === 2 && (
         <div className="space-y-4">
-          <TemplateUploader onUploaded={handleTemplateUploaded} />
+          <TemplateUploader onUploaded={setTemplateState} />
           <ImageUploader value={profileImageState} onChange={setProfileImageState} />
           <button
             onClick={handleComplete}
