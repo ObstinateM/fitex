@@ -8,8 +8,11 @@ A Chrome extension that tailors your LaTeX CV to any job description using AI. S
 - **AI CV tailoring** — streams a modified version of your LaTeX source via OpenAI
 - **Live PDF compilation** — compiles the tailored LaTeX on the fly and previews the PDF inline
 - **Parallel question answering** — answers application questions simultaneously while the CV compiles
-- **Guidance notes** — add per-element or global instructions to steer the AI output
-- **History** — browse and restore previous generations
+- **Per-element guidance** — attach a focus note to any selected element (job description or question) to steer the AI for that specific piece of content, in addition to a global guidance field
+- **Token & cost estimator** — shows a live estimate of token count and OpenAI cost before you hit Generate, updated as you select elements and type guidance
+- **CV–job match score** — on-demand analysis in the Results panel that scores the tailored CV against the job description (0–100) and lists strengths and gaps
+- **Iterative refinement** — after reviewing results, type feedback ("shorten the summary", "emphasize Python more") and regenerate from the already-tailored LaTeX without starting over
+- **History with re-run** — browse previous generations and restore any entry's full context (elements, guidance) back into the selector to branch from it
 - **Fully local** — no backend; your API key and template stay in `chrome.storage.local`
 
 ## Setup
@@ -41,12 +44,18 @@ Settings (model, compiler, template, context) can be changed anytime via the gea
 2. Click the Fitex toolbar icon to open the side panel
 3. Click **Select Elements** and click on sections of the page (job description, required skills, application questions, etc.)
 4. Tag each element as **Job Description** or **Question**
-5. Optionally add guidance notes
-6. Click **Generate** — Fitex will:
+5. Optionally add a focus note to individual elements and/or a global guidance note
+6. Check the token/cost estimate shown below the Generate button
+7. Click **Generate** — Fitex will:
    - Tailor your CV source to the job description (streamed)
    - Compile the modified LaTeX to PDF
    - Answer any tagged questions in parallel
-7. View the PDF and copy answers from the Results panel
+8. In the Results panel:
+   - Download or preview the PDF
+   - Click **CV–Job Match Score** for an instant fit analysis
+   - Use **Refine with feedback** to iterate on the CV without restarting
+   - Use **Reduce to 1 page** if the PDF runs over
+9. Past generations are saved to **History** — use **Re-run** on any entry to restore its full context into the selector
 
 ## Development
 
