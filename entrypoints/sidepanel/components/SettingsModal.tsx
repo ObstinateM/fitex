@@ -21,6 +21,7 @@ export default function SettingsModal({ onClose }: SettingsProps) {
   const [model, setModelState] = useState<OpenAIModel>("gpt-5.2");
   const [context, setContextState] = useState("");
   const [profileImage, setProfileImageState] = useState<AuxFile | null>(null);
+  const [pendingTemplate, setPendingTemplate] = useState<TexTemplate | null>(null);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -36,19 +37,18 @@ export default function SettingsModal({ onClose }: SettingsProps) {
   }, []);
 
   async function save() {
-    await Promise.all([
+    const saves: Promise<void>[] = [
       setApiKey(apiKey),
       setCompiler(compiler),
       setModel(model),
       setContext(context),
       profileImage ? setProfileImage(profileImage) : clearProfileImage(),
-    ]);
+    ];
+    if (pendingTemplate) saves.push(setTemplate(pendingTemplate));
+    await Promise.all(saves);
+    setPendingTemplate(null);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-  }
-
-  async function handleTemplateUploaded(tmpl: TexTemplate) {
-    await setTemplate(tmpl);
   }
 
   return (
@@ -125,7 +125,7 @@ export default function SettingsModal({ onClose }: SettingsProps) {
         </div>
 
         {/* Template re-upload */}
-        <TemplateUploader onUploaded={handleTemplateUploaded} />
+        <TemplateUploader onUploaded={setPendingTemplate} />
 
         {/* Profile image */}
         <ImageUploader value={profileImage} onChange={setProfileImageState} />

@@ -33,7 +33,13 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
     reader.readAsDataURL(file);
   }
 
-  const dataUrl = value ? `data:image/*;base64,${value.content}` : null;
+  function mimeFromPath(path: string): string {
+    const ext = path.split(".").pop()?.toLowerCase();
+    const map: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp" };
+    return map[ext ?? ""] ?? "image/png";
+  }
+
+  const dataUrl = value ? `data:${mimeFromPath(value.path)};base64,${value.content}` : null;
 
   return (
     <div className="space-y-3">
