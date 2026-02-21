@@ -38,15 +38,21 @@ export default function ElementItem({ element, onTagChange, onRemove, onGuidance
           </svg>
         </button>
       </div>
-      {element.tag === "question" && (
-        <textarea
-          value={element.guidance ?? ""}
-          onChange={(e) => onGuidanceChange(element.id, e.target.value)}
-          placeholder="How should this question be answered? (optional)"
-          rows={2}
-          className="w-full resize-none rounded border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-400 focus:border-purple-400 focus:outline-none"
-        />
-      )}
+      <textarea
+        value={element.guidance ?? ""}
+        onChange={(e) => onGuidanceChange(element.id, e.target.value)}
+        placeholder={
+          element.tag === "question"
+            ? "How should this question be answered? (optional)"
+            : "Any specific focus for this element? (optional)"
+        }
+        rows={2}
+        className={`w-full resize-none rounded border bg-gray-50 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-400 focus:outline-none ${
+          element.tag === "question"
+            ? "border-gray-200 focus:border-purple-400"
+            : "border-gray-200 focus:border-blue-400"
+        }`}
+      />
     </div>
   );
 }

@@ -133,7 +133,7 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
 
       const jobDescription = elements
         .filter((el) => el.tag === "job-description")
-        .map((el) => el.text)
+        .map((el) => el.guidance ? `${el.text}\n\n[Focus note: ${el.guidance}]` : el.text)
         .join("\n\n");
 
       let modifiedTex = "";
