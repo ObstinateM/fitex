@@ -19,6 +19,7 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
   const [showTex, setShowTex] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [reducing, setReducing] = useState(false);
+  const [reduceCooldown, setReduceCooldown] = useState(false);
   const [reduceStatus, setReduceStatus] = useState("");
 
   function downloadPdf() {
@@ -35,10 +36,12 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
     if (!result.pdfBlob) return;
     const url = URL.createObjectURL(result.pdfBlob);
     window.open(url, "_blank");
+    // Delay revocation so the new tab has time to load the blob
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
 
   async function reduceCv() {
-    if (reducing || !result.pdfBlob || !result.modifiedTex) return;
+    if (reducing || reduceCooldown || !result.pdfBlob || !result.modifiedTex) return;
     setReducing(true);
 
     try {
@@ -51,7 +54,6 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
 
       if (!apiKey || !template) {
         setReduceStatus("Missing API key or template.");
-        setReducing(false);
         return;
       }
 
@@ -59,7 +61,6 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
       if (pages <= 1) {
         setReduceStatus("Already 1 page!");
         setTimeout(() => setReduceStatus(""), 2000);
-        setReducing(false);
         return;
       }
 
@@ -71,11 +72,9 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
         [{ role: "user", content: buildReduceToOnePagePrompt(result.modifiedTex, pages, result.jobDescription) }],
         {
           onChunk: (chunk) => { reducedTex += chunk; },
-          onDone: () => {},
-          onError: (err) => { throw err; },
         },
       );
-      reducedTex = reducedTex.replace(/^```(?:latex|tex)?\n?/m, "").replace(/\n?```\s*$/m, "").trim();
+      reducedTex = reducedTex.replace(/^```(?:latex|tex)?\n?/, "").replace(/\n?```\s*$/, "").trim();
 
       setReduceStatus("Recompiling PDF...");
       const templateForCompile = profileImage
@@ -98,11 +97,14 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
         setReduceStatus("Recompilation failed — kept previous version.");
         setTimeout(() => setReduceStatus(""), 3000);
       }
-    } catch (err: any) {
-      setReduceStatus(`Error: ${err.message || "Reduction failed"}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Reduction failed";
+      setReduceStatus(`Error: ${message}`);
       setTimeout(() => setReduceStatus(""), 5000);
     } finally {
       setReducing(false);
+      setReduceCooldown(true);
+      setTimeout(() => setReduceCooldown(false), 2000);
     }
   }
 
@@ -136,7 +138,7 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
           {/* Reduce button */}
           <button
             onClick={reduceCv}
-            disabled={reducing}
+            disabled={reducing || reduceCooldown}
             className="mt-2 w-full cursor-pointer rounded-lg border border-orange-300 bg-orange-50 px-4 py-2 text-sm font-medium text-orange-700 hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {reducing ? "Reducing..." : "Reduce to 1 page"}

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import type { GenerationResult, SelectedElement, ElementTag, Message } from "@/lib/types";
+import { useState, useEffect, useRef } from "react";
+import type { GenerationResult, SelectedElement, ElementTag } from "@/lib/types";
 import { sendToContentScript, getActiveTabId, onMessage } from "@/lib/messaging";
 import { getApiKey, getTemplate, getModel, getContext, getProfileImage } from "@/lib/storage";
 import { streamChatCompletion, chatCompletion } from "@/lib/openai";
@@ -17,10 +17,13 @@ interface SelectorProps {
 
 export default function Selector({ previousElements, previousGuidance, onGenerated }: SelectorProps) {
   const [selecting, setSelecting] = useState(false);
+  const [toggling, setToggling] = useState(false);
   const [elements, setElements] = useState<SelectedElement[]>(previousElements);
   const [guidance, setGuidance] = useState(previousGuidance);
   const [status, setStatus] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [cooldown, setCooldown] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Listen for messages from content script
   useEffect(() => {
@@ -58,18 +61,24 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
   }
 
   async function toggleSelection() {
-    if (selecting) {
-      await sendToContentScript({ type: "STOP_SELECTION" });
-      setSelecting(false);
-    } else {
-      const ok = await injectContentScript();
-      if (!ok) {
-        setStatus("Cannot inject on this page. Try a regular webpage.");
-        setTimeout(() => setStatus(""), 3000);
-        return;
+    if (toggling) return;
+    setToggling(true);
+    try {
+      if (selecting) {
+        await sendToContentScript({ type: "STOP_SELECTION" });
+        setSelecting(false);
+      } else {
+        const ok = await injectContentScript();
+        if (!ok) {
+          setStatus("Cannot inject on this page. Try a regular webpage.");
+          setTimeout(() => setStatus(""), 3000);
+          return;
+        }
+        await sendToContentScript({ type: "START_SELECTION" });
+        setSelecting(true);
       }
-      await sendToContentScript({ type: "START_SELECTION" });
-      setSelecting(true);
+    } finally {
+      setToggling(false);
     }
   }
 
@@ -79,9 +88,9 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
     );
   }
 
-  function handleRemove(id: string) {
+  async function handleRemove(id: string) {
     setElements((prev) => prev.filter((el) => el.id !== id));
-    sendToContentScript({ type: "CLEAR_SELECTIONS" });
+    await sendToContentScript({ type: "DESELECT_ELEMENT", payload: { id } });
   }
 
   function handleElementGuidanceChange(id: string, guidance: string) {
@@ -94,7 +103,7 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
   const questions = elements.filter((el) => el.tag === "question");
 
   async function generate() {
-    if (generating) return;
+    if (generating || cooldown) return;
     setGenerating(true);
 
     // Stop selection mode
@@ -114,13 +123,11 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
 
       if (!apiKey) {
         setStatus("Missing API key. Please re-configure in settings.");
-        setGenerating(false);
         return;
       }
 
       if (hasJobDescription && !template) {
         setStatus("Missing LaTeX template. Please re-configure in settings.");
-        setGenerating(false);
         return;
       }
 
@@ -138,6 +145,7 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
         setStatus("Tailoring CV...");
         const cvPrompt = buildCvTailoringPrompt(template.mainContent, jobDescription, guidance, context);
 
+        abortRef.current = new AbortController();
         await streamChatCompletion(
           apiKey,
           model,
@@ -146,22 +154,19 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
             onChunk: (chunk) => {
               modifiedTex += chunk;
             },
-            onDone: () => {},
-            onError: (err) => {
-              throw err;
-            },
           },
+          abortRef.current.signal,
         );
 
         // Clean markdown code fences if present
-        modifiedTex = modifiedTex.replace(/^```(?:latex|tex)?\n?/m, "").replace(/\n?```\s*$/m, "").trim();
+        modifiedTex = modifiedTex.replace(/^```(?:latex|tex)?\n?/, "").replace(/\n?```\s*$/, "").trim();
 
         // Step 2: Compile LaTeX
         setStatus("Compiling PDF...");
         const templateForCompile = profileImage
           ? { ...template, auxFiles: [...template.auxFiles, profileImage] }
           : template;
-        let compileResult = await compileLatex({
+        const compileResult = await compileLatex({
           template: templateForCompile,
           modifiedMainContent: modifiedTex,
         });
@@ -195,11 +200,15 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
         elements,
         guidance,
       );
-    } catch (err: any) {
-      setStatus(`Error: ${err.message || "Generation failed"}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Generation failed";
+      setStatus(`Error: ${message}`);
       setTimeout(() => setStatus(""), 5000);
     } finally {
+      abortRef.current = null;
       setGenerating(false);
+      setCooldown(true);
+      setTimeout(() => setCooldown(false), 2000);
     }
   }
 
@@ -249,7 +258,7 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
 
       <button
         onClick={generate}
-        disabled={elements.length === 0 || generating}
+        disabled={elements.length === 0 || generating || cooldown}
         className="w-full cursor-pointer rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {generating ? "Generating..." : "Generate"}
