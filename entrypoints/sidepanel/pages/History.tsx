@@ -4,9 +4,10 @@ import type { HistoryEntry } from "@/lib/types";
 
 interface HistoryProps {
   onView: (entry: HistoryEntry) => void;
+  onRerun: (entry: HistoryEntry) => void;
 }
 
-export default function History({ onView }: HistoryProps) {
+export default function History({ onView, onRerun }: HistoryProps) {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -104,6 +105,12 @@ export default function History({ onView }: HistoryProps) {
                 className="flex-1 cursor-pointer rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
               >
                 View
+              </button>
+              <button
+                onClick={() => onRerun(entry)}
+                className="flex-1 cursor-pointer rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100"
+              >
+                Re-run
               </button>
               <button
                 onClick={() => handleDelete(entry.id)}

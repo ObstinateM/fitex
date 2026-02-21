@@ -106,12 +106,30 @@ function AppInner() {
           modifiedTex: res.modifiedTex,
           answers: res.answers,
           latexErrors: res.latexErrors,
+          elements,
+          guidance,
         };
         await addHistoryEntry(entry);
       } catch {
         // Storage quota exceeded or other error — silently skip history save
       }
     }
+  }
+
+  function handleRerunFromHistory(entry: HistoryEntry) {
+    if (entry.elements && entry.elements.length > 0) {
+      setPreviousElements(entry.elements);
+      setPreviousGuidance(entry.guidance ?? "");
+    } else {
+      // Backward compat: synthesise an element from the stored job description snippet
+      setPreviousElements([{
+        id: crypto.randomUUID(),
+        text: entry.jobDescription,
+        tag: "job-description",
+      }]);
+      setPreviousGuidance("");
+    }
+    setPage("selector");
   }
 
   function handleViewHistory(entry: HistoryEntry) {
@@ -160,7 +178,7 @@ function AppInner() {
         />
       )}
       {page === "history" && (
-        <History onView={handleViewHistory} />
+        <History onView={handleViewHistory} onRerun={handleRerunFromHistory} />
       )}
       {page === "results" && result && (
         <Results

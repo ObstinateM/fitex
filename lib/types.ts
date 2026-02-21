@@ -33,6 +33,8 @@ export interface HistoryEntry {
   modifiedTex: string;
   answers: AnswerItem[];
   latexErrors: string[];
+  elements?: SelectedElement[];
+  guidance?: string;
 }
 
 export interface GenerationResult {
