@@ -4,21 +4,25 @@ export default defineContentScript({
   matches: ["<all_urls>"],
   registration: "runtime",
   main() {
-    // Inject styles into page
-    const style = document.createElement("style");
-    style.textContent = `
-      .__cv_ext_hover {
-        outline: 2px solid #3b82f6 !important;
-        outline-offset: 2px !important;
-        cursor: crosshair !important;
-      }
-      .__cv_ext_selected {
-        outline: 2px solid #22c55e !important;
-        outline-offset: 2px !important;
-        background-color: rgba(34, 197, 94, 0.08) !important;
-      }
-    `;
-    document.head.appendChild(style);
+    // Inject styles into page (guard against duplicate injection)
+    const STYLE_ID = "__cv_ext_styles";
+    if (!document.getElementById(STYLE_ID)) {
+      const style = document.createElement("style");
+      style.id = STYLE_ID;
+      style.textContent = `
+        .__cv_ext_hover {
+          outline: 2px solid #3b82f6 !important;
+          outline-offset: 2px !important;
+          cursor: crosshair !important;
+        }
+        .__cv_ext_selected {
+          outline: 2px solid #22c55e !important;
+          outline-offset: 2px !important;
+          background-color: rgba(34, 197, 94, 0.08) !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
 
     let active = false;
     let hoveredEl: HTMLElement | null = null;
@@ -61,10 +65,10 @@ export default defineContentScript({
       hoveredEl = target;
     }
 
-    function onMouseOut(e: Event) {
-      if (!active) return;
-      const target = findBestElement(e.target as HTMLElement);
-      target.classList.remove("__cv_ext_hover");
+    function onMouseOut(_e: Event) {
+      if (!active || !hoveredEl) return;
+      hoveredEl.classList.remove("__cv_ext_hover");
+      hoveredEl = null;
     }
 
     function onClick(e: Event) {
@@ -82,7 +86,7 @@ export default defineContentScript({
         chrome.runtime.sendMessage({
           type: "ELEMENT_DESELECTED",
           payload: { id: existingId },
-        } satisfies Message);
+        } satisfies Message).catch(() => {});
       } else {
         const id = crypto.randomUUID();
         target.classList.add("__cv_ext_selected");
@@ -90,7 +94,7 @@ export default defineContentScript({
         chrome.runtime.sendMessage({
           type: "ELEMENT_SELECTED",
           payload: { id, text: extractText(target) },
-        } satisfies Message);
+        } satisfies Message).catch(() => {});
       }
     }
 
@@ -131,6 +135,14 @@ export default defineContentScript({
           case "CLEAR_SELECTIONS":
             clearAll();
             break;
+          case "DESELECT_ELEMENT": {
+            const el = selectedEls.get(message.payload.id);
+            if (el) {
+              el.classList.remove("__cv_ext_selected");
+              selectedEls.delete(message.payload.id);
+            }
+            break;
+          }
           case "PING":
             sendResponse({ type: "PONG" } satisfies Message);
             return true;

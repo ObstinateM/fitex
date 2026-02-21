@@ -10,7 +10,6 @@ export interface SelectedElement {
 export interface TexTemplate {
   mainContent: string;
   auxFiles: AuxFile[];
-  compiler: LatexCompiler;
 }
 
 export interface AuxFile {
@@ -51,6 +50,7 @@ export type Message =
   | { type: "START_SELECTION" }
   | { type: "STOP_SELECTION" }
   | { type: "CLEAR_SELECTIONS" }
+  | { type: "DESELECT_ELEMENT"; payload: { id: string } }
   | { type: "PING" }
   | { type: "PONG" }
   | { type: "ELEMENT_SELECTED"; payload: { id: string; text: string } }
