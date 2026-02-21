@@ -92,10 +92,12 @@ export async function getHistory(): Promise<HistoryEntry[]> {
   return (await get<HistoryEntry[]>(KEYS.history)) ?? [];
 }
 
+const MAX_HISTORY = 20;
+
 export async function addHistoryEntry(entry: HistoryEntry): Promise<void> {
   const history = await getHistory();
   history.unshift(entry);
-  await set(KEYS.history, history);
+  await set(KEYS.history, history.slice(0, MAX_HISTORY));
 }
 
 export async function deleteHistoryEntry(id: string): Promise<void> {

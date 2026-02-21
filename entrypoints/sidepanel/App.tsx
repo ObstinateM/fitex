@@ -42,11 +42,11 @@ type Page = "onboarding" | "selector" | "results" | "settings" | "history";
 async function blobToBase64(blob: Blob): Promise<string> {
   const buffer = await blob.arrayBuffer();
   const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  const chunks: string[] = [];
+  for (let i = 0; i < bytes.length; i += 8192) {
+    chunks.push(String.fromCharCode(...bytes.subarray(i, i + 8192)));
   }
-  return btoa(binary);
+  return btoa(chunks.join(""));
 }
 
 function base64ToBlob(base64: string, type = "application/pdf"): Blob {
@@ -64,8 +64,7 @@ function AppInner() {
   const [previousElements, setPreviousElements] = useState<SelectedElement[]>([]);
   const [previousGuidance, setPreviousGuidance] = useState("");
   const [loading, setLoading] = useState(true);
-  const [returnPage, setReturnPage] = useState<"selector" | "results">("selector");
-  const [activeTab, setActiveTab] = useState<"generate" | "history">("generate");
+  const [returnPage, setReturnPage] = useState<"selector" | "results" | "history">("selector");
   const [fromHistory, setFromHistory] = useState(false);
 
   useEffect(() => {
@@ -84,7 +83,7 @@ function AppInner() {
   }
 
   function openSettings() {
-    if (page === "selector" || page === "results" || page === "history") setReturnPage(page as "selector" | "results");
+    if (page === "selector" || page === "results" || page === "history") setReturnPage(page);
     setPage("settings");
   }
 
@@ -97,17 +96,21 @@ function AppInner() {
 
     // Auto-save to history
     if (res.pdfBlob || res.modifiedTex) {
-      const pdfBase64 = res.pdfBlob ? await blobToBase64(res.pdfBlob) : "";
-      const entry: HistoryEntry = {
-        id: crypto.randomUUID(),
-        createdAt: Date.now(),
-        jobDescription: res.jobDescription.slice(0, 200),
-        pdfBase64,
-        modifiedTex: res.modifiedTex,
-        answers: res.answers,
-        latexErrors: res.latexErrors,
-      };
-      addHistoryEntry(entry);
+      try {
+        const pdfBase64 = res.pdfBlob ? await blobToBase64(res.pdfBlob) : "";
+        const entry: HistoryEntry = {
+          id: crypto.randomUUID(),
+          createdAt: Date.now(),
+          jobDescription: res.jobDescription.slice(0, 200),
+          pdfBase64,
+          modifiedTex: res.modifiedTex,
+          answers: res.answers,
+          latexErrors: res.latexErrors,
+        };
+        await addHistoryEntry(entry);
+      } catch {
+        // Storage quota exceeded or other error — silently skip history save
+      }
     }
   }
 
@@ -126,6 +129,7 @@ function AppInner() {
 
   const showSettings = page !== "onboarding" && page !== "settings";
   const showTabBar = page === "selector" || page === "history";
+  const activeTab = page === "history" ? "history" : "generate";
 
   return (
     <>
@@ -158,14 +162,13 @@ function AppInner() {
       {page === "history" && (
         <History onView={handleViewHistory} />
       )}
-      {page === "results" && (
+      {page === "results" && result && (
         <Results
-          result={result!}
+          result={result}
           backLabel={fromHistory ? "Back to History" : undefined}
           onBack={() => {
             if (fromHistory) {
               setFromHistory(false);
-              setActiveTab("history");
               setPage("history");
             } else {
               setPage("selector");
@@ -178,7 +181,7 @@ function AppInner() {
       {showTabBar && (
         <div className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-gray-200 bg-white">
           <button
-            onClick={() => { setActiveTab("generate"); setPage("selector"); }}
+            onClick={() => setPage("selector")}
             className={`flex flex-1 cursor-pointer flex-col items-center gap-0.5 py-2 text-xs font-medium ${
               activeTab === "generate" ? "text-blue-600" : "text-gray-400"
             }`}
@@ -189,7 +192,7 @@ function AppInner() {
             Generate
           </button>
           <button
-            onClick={() => { setActiveTab("history"); setPage("history"); }}
+            onClick={() => setPage("history")}
             className={`flex flex-1 cursor-pointer flex-col items-center gap-0.5 py-2 text-xs font-medium ${
               activeTab === "history" ? "text-blue-600" : "text-gray-400"
             }`}
