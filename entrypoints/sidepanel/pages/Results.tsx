@@ -4,8 +4,8 @@ import PdfViewer from "../components/PdfViewer";
 import AnswerCard from "../components/AnswerCard";
 import StatusBar from "../components/StatusBar";
 import { getApiKey, getTemplate, getModel, getProfileImage } from "@/lib/storage";
-import { streamChatCompletion } from "@/lib/openai";
-import { buildReduceToOnePagePrompt } from "@/lib/prompts";
+import { streamChatCompletion, chatCompletion } from "@/lib/openai";
+import { buildReduceToOnePagePrompt, buildMatchScorePrompt } from "@/lib/prompts";
 import { compileLatex, countPdfPages } from "@/lib/latex";
 
 interface ResultsProps {
@@ -21,6 +21,9 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
   const [reducing, setReducing] = useState(false);
   const [reduceCooldown, setReduceCooldown] = useState(false);
   const [reduceStatus, setReduceStatus] = useState("");
+  const [matchScore, setMatchScore] = useState<{ score: number; strengths: string[]; gaps: string[] } | null>(null);
+  const [scoringMatch, setScoringMatch] = useState(false);
+  const [showMatch, setShowMatch] = useState(false);
 
   function downloadPdf() {
     if (!result.pdfBlob) return;
@@ -38,6 +41,27 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
     window.open(url, "_blank");
     // Delay revocation so the new tab has time to load the blob
     setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  async function analyzeMatch() {
+    if (scoringMatch || !result.modifiedTex || !result.jobDescription) return;
+    setScoringMatch(true);
+    setShowMatch(true);
+    setMatchScore(null);
+    try {
+      const [apiKey, model] = await Promise.all([getApiKey(), getModel()]);
+      if (!apiKey) return;
+      const raw = await chatCompletion(apiKey, model, [
+        { role: "user", content: buildMatchScorePrompt(result.modifiedTex, result.jobDescription) },
+      ]);
+      const parsed = JSON.parse(raw.trim());
+      setMatchScore(parsed);
+    } catch {
+      setMatchScore(null);
+      setShowMatch(false);
+    } finally {
+      setScoringMatch(false);
+    }
   }
 
   async function reduceCv() {
@@ -153,6 +177,68 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
           PDF compilation failed. Check the errors below.
         </div>
       ) : null}
+
+      {/* Match Score */}
+      {result.modifiedTex && result.jobDescription && (
+        <div className="mb-4">
+          <button
+            onClick={analyzeMatch}
+            disabled={scoringMatch}
+            className="flex cursor-pointer items-center gap-1 text-sm font-medium text-gray-500 hover:text-gray-700 disabled:opacity-50"
+          >
+            <span className={`inline-block transition-transform ${showMatch ? "rotate-90" : ""}`}>&#9654;</span>
+            {scoringMatch ? "Analyzing match..." : "CV–Job Match Score"}
+          </button>
+          {showMatch && (
+            <div className="mt-2 rounded-lg border border-gray-200 p-3">
+              {scoringMatch && !matchScore && (
+                <div className="flex justify-center py-2">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                </div>
+              )}
+              {matchScore && (
+                <>
+                  <div className="mb-3 flex items-center gap-3">
+                    <div className="relative h-2 flex-1 rounded-full bg-gray-100">
+                      <div
+                        className={`absolute left-0 top-0 h-2 rounded-full ${
+                          matchScore.score >= 70 ? "bg-green-500" : matchScore.score >= 45 ? "bg-yellow-400" : "bg-red-400"
+                        }`}
+                        style={{ width: `${matchScore.score}%` }}
+                      />
+                    </div>
+                    <span className={`text-sm font-bold tabular-nums ${
+                      matchScore.score >= 70 ? "text-green-600" : matchScore.score >= 45 ? "text-yellow-600" : "text-red-600"
+                    }`}>
+                      {matchScore.score}/100
+                    </span>
+                  </div>
+                  {matchScore.strengths.length > 0 && (
+                    <div className="mb-2">
+                      <p className="mb-1 text-xs font-medium text-green-700">Strengths</p>
+                      <div className="flex flex-wrap gap-1">
+                        {matchScore.strengths.map((s, i) => (
+                          <span key={i} className="rounded bg-green-50 px-1.5 py-0.5 text-[10px] text-green-700">{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {matchScore.gaps.length > 0 && (
+                    <div>
+                      <p className="mb-1 text-xs font-medium text-red-700">Gaps</p>
+                      <div className="flex flex-wrap gap-1">
+                        {matchScore.gaps.map((g, i) => (
+                          <span key={i} className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] text-red-700">{g}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* LaTeX Errors */}
       {result.latexErrors.length > 0 && (
