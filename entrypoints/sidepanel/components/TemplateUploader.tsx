@@ -38,7 +38,7 @@ export default function TemplateUploader({ onUploaded }: TemplateUploaderProps) 
           return;
         }
         setPreview(text.slice(0, 300));
-        onUploaded({ mainContent: text, auxFiles: [], compiler: "pdflatex" });
+        onUploaded({ mainContent: text, auxFiles: [] });
       } else {
         setError("Please upload a .tex or .zip file.");
       }
@@ -48,34 +48,69 @@ export default function TemplateUploader({ onUploaded }: TemplateUploaderProps) 
   }
 
   async function processZip(file: File) {
+    const MAX_ZIP_SIZE = 10 * 1024 * 1024; // 10 MB compressed
+    const MAX_EXTRACTED_SIZE = 50 * 1024 * 1024; // 50 MB decompressed
+    const MAX_FILE_COUNT = 100;
+
+    if (file.size > MAX_ZIP_SIZE) {
+      setError(`ZIP file too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is 10 MB.`);
+      return;
+    }
+
     const buffer = await file.arrayBuffer();
     const files = unzipSync(new Uint8Array(buffer));
 
     let mainContent = "";
-    let mainPath = "";
     const auxFiles: AuxFile[] = [];
+    let mainCandidateCount = 0;
+    let totalExtractedSize = 0;
+    let fileCount = 0;
 
     const BINARY_EXTS = [".jpg", ".jpeg", ".png", ".gif", ".pdf", ".eps", ".bmp", ".tiff", ".webp"];
 
     for (const [path, data] of Object.entries(files)) {
-      if (path.startsWith("__MACOSX/") || path.startsWith(".")) continue;
+      if (path.startsWith("__MACOSX/") || path.startsWith(".") || path.endsWith("/")) continue;
+
+      // Path traversal protection
+      if (path.includes("..") || path.startsWith("/")) {
+        setError(`Rejected unsafe path in ZIP: ${path}`);
+        return;
+      }
+
+      fileCount++;
+      if (fileCount > MAX_FILE_COUNT) {
+        setError(`ZIP contains too many files (>${MAX_FILE_COUNT}).`);
+        return;
+      }
+
+      totalExtractedSize += data.length;
+      if (totalExtractedSize > MAX_EXTRACTED_SIZE) {
+        setError(`Extracted content too large (>${MAX_EXTRACTED_SIZE / 1024 / 1024} MB). Possible zip bomb.`);
+        return;
+      }
       const isBinary = BINARY_EXTS.some(ext => path.toLowerCase().endsWith(ext));
       if (path.endsWith(".tex")) {
         const content = strFromU8(data);
         if (content.includes("\\documentclass")) {
-          mainContent = content;
-          mainPath = path;
-        } else if (!path.endsWith("/")) {
+          if (mainCandidateCount === 0) {
+            mainContent = content;
+          } else {
+            // Extra documentclass files go to aux; first one stays as main
+            auxFiles.push({ path, content });
+          }
+          mainCandidateCount++;
+        } else {
           auxFiles.push({ path, content });
         }
-      } else if (!path.endsWith("/")) {
-        if (isBinary) {
-          let binary = "";
-          for (let i = 0; i < data.byteLength; i++) binary += String.fromCharCode(data[i]);
-          auxFiles.push({ path, content: btoa(binary), encoding: "base64" });
-        } else {
-          auxFiles.push({ path, content: strFromU8(data) });
+      } else if (isBinary) {
+        const bytes = new Uint8Array(data);
+        const chunks: string[] = [];
+        for (let i = 0; i < bytes.length; i += 8192) {
+          chunks.push(String.fromCharCode(...bytes.subarray(i, i + 8192)));
         }
+        auxFiles.push({ path, content: btoa(chunks.join("")), encoding: "base64" });
+      } else {
+        auxFiles.push({ path, content: strFromU8(data) });
       }
     }
 
@@ -84,8 +119,12 @@ export default function TemplateUploader({ onUploaded }: TemplateUploaderProps) 
       return;
     }
 
+    if (mainCandidateCount > 1) {
+      setError(`Found ${mainCandidateCount} .tex files with \\documentclass — using the first one. Consider removing extras from your ZIP.`);
+    }
+
     setPreview(mainContent.slice(0, 300));
-    onUploaded({ mainContent, auxFiles, compiler: "pdflatex" });
+    onUploaded({ mainContent, auxFiles });
   }
 
   return (
