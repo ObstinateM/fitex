@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from "react";
-import type { GenerationResult, SelectedElement, ElementTag, OpenAIModel } from "@/lib/types";
+import type { GenerationResult, SelectedElement, ElementTag, OpenAIModel, Story, StorySelection } from "@/lib/types";
 import { sendToContentScript, getActiveTabId, onMessage } from "@/lib/messaging";
-import { getApiKey, getTemplate, getModel, getContext, getProfileImage } from "@/lib/storage";
+import { getApiKey, getTemplate, getModel, getContext, getProfileImage, getStories } from "@/lib/storage";
 import { streamChatCompletion, chatCompletion } from "@/lib/openai";
 import { buildCvTailoringPrompt, buildQuestionAnswerPrompt, buildKeywordScanPrompt } from "@/lib/prompts";
 import { compileLatex } from "@/lib/latex";
+import { filterRelevantStories } from "@/lib/stories";
 import ElementList from "../components/ElementList";
 import GuidanceEditor from "../components/GuidanceEditor";
 import StatusBar from "../components/StatusBar";
+import StoryConfirmation from "../components/StoryConfirmation";
 
 const MODEL_PRICING: Record<OpenAIModel, { input: number; output: number }> = {
   "gpt-5.2":      { input: 2.0,  output: 8.0 },
@@ -33,6 +35,13 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
   const [cooldown, setCooldown] = useState(false);
   const [costEstimate, setCostEstimate] = useState<{ tokens: number; cost: number } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Story confirmation state
+  const [storyConfirmation, setStoryConfirmation] = useState<{
+    stories: Story[];
+    selections: StorySelection[];
+    resolve: (selectedIds: string[] | null) => void;
+  } | null>(null);
 
   useEffect(() => {
     if (elements.length === 0) {
@@ -175,6 +184,29 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
         .map((el) => el.guidance ? `${el.text}\n\n[Focus note: ${el.guidance}]` : el.text)
         .join("\n\n");
 
+      // Story relevance filter + confirmation
+      let selectedStories: Story[] = [];
+      const allStories = await getStories();
+      if (allStories.length > 0 && jobDescription) {
+        setStatus("Selecting relevant stories...");
+        const selections = await filterRelevantStories(allStories, jobDescription, apiKey, model);
+
+        // Show confirmation UI and wait for user decision
+        const confirmedIds = await new Promise<string[] | null>((resolve) => {
+          setStoryConfirmation({ stories: allStories, selections, resolve });
+        });
+        setStoryConfirmation(null);
+
+        if (confirmedIds === null) {
+          // User cancelled
+          setStatus("");
+          return;
+        }
+
+        const confirmedSet = new Set(confirmedIds);
+        selectedStories = allStories.filter((s) => confirmedSet.has(s.id));
+      }
+
       let modifiedTex = "";
       let pdfBlob: Blob | null = null;
       let latexErrors: string[] = [];
@@ -315,11 +347,23 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
         <GuidanceEditor value={guidance} onChange={setGuidance} />
       </div>
 
+      {/* Story confirmation */}
+      {storyConfirmation && (
+        <div className="mb-4">
+          <StoryConfirmation
+            stories={storyConfirmation.stories}
+            selections={storyConfirmation.selections}
+            onConfirm={(ids) => storyConfirmation.resolve(ids)}
+            onCancel={() => storyConfirmation.resolve(null)}
+          />
+        </div>
+      )}
+
       {/* Status / Generate */}
       {status && !generating && (
         <p className="mb-3 text-sm text-red-600">{status}</p>
       )}
-      {generating && <div className="mb-3"><StatusBar message={status} /></div>}
+      {generating && !storyConfirmation && <div className="mb-3"><StatusBar message={status} /></div>}
 
       {costEstimate && !generating && (
         <p className="mb-2 text-center text-xs text-gray-400">
