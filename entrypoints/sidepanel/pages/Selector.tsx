@@ -3,7 +3,7 @@ import type { GenerationResult, SelectedElement, ElementTag, OpenAIModel } from 
 import { sendToContentScript, getActiveTabId, onMessage } from "@/lib/messaging";
 import { getApiKey, getTemplate, getModel, getContext, getProfileImage } from "@/lib/storage";
 import { streamChatCompletion, chatCompletion } from "@/lib/openai";
-import { buildCvTailoringPrompt, buildQuestionAnswerPrompt } from "@/lib/prompts";
+import { buildCvTailoringPrompt, buildQuestionAnswerPrompt, buildKeywordScanPrompt } from "@/lib/prompts";
 import { compileLatex } from "@/lib/latex";
 import ElementList from "../components/ElementList";
 import GuidanceEditor from "../components/GuidanceEditor";
@@ -178,14 +178,26 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
       let modifiedTex = "";
       let pdfBlob: Blob | null = null;
       let latexErrors: string[] = [];
+      let keywordScanBefore: import("@/lib/types").KeywordScanResult | undefined;
+      let keywordScanAfter: import("@/lib/types").KeywordScanResult | undefined;
 
       if (hasJobDescription && template) {
-        // Step 1: Tailor CV
-        setStatus("Tailoring CV...");
+        // Step 1: Tailor CV + scan keywords (before) in parallel
+        setStatus("Tailoring CV & scanning keywords...");
         const cvPrompt = buildCvTailoringPrompt(template.mainContent, jobDescription, guidance, context);
 
         abortRef.current = new AbortController();
-        await streamChatCompletion(
+
+        const beforeScanPromise = chatCompletion(apiKey, model, [
+          { role: "user", content: buildKeywordScanPrompt(jobDescription, template.mainContent) },
+        ]).then((raw) => {
+          try {
+            const parsed = JSON.parse(raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```\s*$/, "").trim());
+            keywordScanBefore = { keywords: parsed };
+          } catch { /* silently ignore */ }
+        }).catch(() => { /* silently ignore */ });
+
+        const tailorPromise = streamChatCompletion(
           apiKey,
           model,
           [{ role: "user", content: cvPrompt }],
@@ -197,8 +209,20 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
           abortRef.current.signal,
         );
 
+        await Promise.all([tailorPromise, beforeScanPromise]);
+
         // Clean markdown code fences if present
         modifiedTex = modifiedTex.replace(/^```(?:latex|tex)?\n?/, "").replace(/\n?```\s*$/, "").trim();
+
+        // Step 1.5: Scan keywords (after) on the tailored CV
+        setStatus("Scanning tailored CV keywords...");
+        try {
+          const afterRaw = await chatCompletion(apiKey, model, [
+            { role: "user", content: buildKeywordScanPrompt(jobDescription, modifiedTex) },
+          ]);
+          const afterParsed = JSON.parse(afterRaw.replace(/^```(?:json)?\n?/, "").replace(/\n?```\s*$/, "").trim());
+          keywordScanAfter = { keywords: afterParsed };
+        } catch { /* silently ignore */ }
 
         // Step 2: Compile LaTeX
         setStatus("Compiling PDF...");
@@ -219,11 +243,11 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
         setStatus(`Answering ${questions.length} question(s)...`);
         const cvSource = template?.mainContent ?? "";
         const answerPromises = questions.map(async (q) => {
-          const prompt = buildQuestionAnswerPrompt(q.text, jobDescription, cvSource, guidance, context, q.guidance);
+          const prompt = buildQuestionAnswerPrompt(q.text, jobDescription, cvSource, context, q.guidance);
           const answer = await chatCompletion(apiKey, model, [
             { role: "user", content: prompt },
           ]);
-          return { question: q.text, answer };
+          return { question: q.text, answer, elementId: q.id };
         });
         answers.push(...(await Promise.all(answerPromises)));
       }
@@ -235,6 +259,8 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
           answers,
           latexErrors,
           jobDescription,
+          keywordScanBefore,
+          keywordScanAfter,
         },
         elements,
         guidance,

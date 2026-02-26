@@ -23,6 +23,17 @@ export type LatexCompiler = "pdflatex" | "xelatex" | "lualatex";
 export interface AnswerItem {
   question: string;
   answer: string;
+  elementId?: string;
+}
+
+export interface KeywordItem {
+  keyword: string;
+  category: "hard-skill" | "tool" | "certification" | "methodology" | "language";
+  present: boolean;
+}
+
+export interface KeywordScanResult {
+  keywords: KeywordItem[];
 }
 
 export interface HistoryEntry {
@@ -35,6 +46,8 @@ export interface HistoryEntry {
   latexErrors: string[];
   elements?: SelectedElement[];
   guidance?: string;
+  keywordScanBefore?: KeywordScanResult;
+  keywordScanAfter?: KeywordScanResult;
 }
 
 export interface GenerationResult {
@@ -43,6 +56,8 @@ export interface GenerationResult {
   answers: AnswerItem[];
   latexErrors: string[];
   jobDescription: string;
+  keywordScanBefore?: KeywordScanResult;
+  keywordScanAfter?: KeywordScanResult;
 }
 
 export type OpenAIModel = "gpt-5.2" | "gpt-4.1" | "gpt-4.1-mini" | "gpt-4.1-nano" | "o4-mini";

@@ -108,6 +108,8 @@ function AppInner() {
           latexErrors: res.latexErrors,
           elements,
           guidance,
+          keywordScanBefore: res.keywordScanBefore,
+          keywordScanAfter: res.keywordScanAfter,
         };
         await addHistoryEntry(entry);
       } catch {
@@ -140,6 +142,8 @@ function AppInner() {
       answers: entry.answers,
       latexErrors: entry.latexErrors,
       jobDescription: entry.jobDescription,
+      keywordScanBefore: entry.keywordScanBefore,
+      keywordScanAfter: entry.keywordScanAfter,
     });
     setFromHistory(true);
     setPage("results");

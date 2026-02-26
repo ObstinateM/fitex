@@ -1,11 +1,13 @@
 import { useState } from "react";
-import type { GenerationResult } from "@/lib/types";
+import type { GenerationResult, KeywordScanResult, Message } from "@/lib/types";
+import { sendToContentScript } from "@/lib/messaging";
 import PdfViewer from "../components/PdfViewer";
 import AnswerCard from "../components/AnswerCard";
+import KeywordScanCard from "../components/KeywordScanCard";
 import StatusBar from "../components/StatusBar";
 import { getApiKey, getTemplate, getModel, getContext, getProfileImage, addHistoryEntry } from "@/lib/storage";
 import { streamChatCompletion, chatCompletion } from "@/lib/openai";
-import { buildReduceToOnePagePrompt, buildMatchScorePrompt, buildFeedbackRefinementPrompt } from "@/lib/prompts";
+import { buildReduceToOnePagePrompt, buildMatchScorePrompt, buildFeedbackRefinementPrompt, buildKeywordScanPrompt } from "@/lib/prompts";
 import { compileLatex, countPdfPages } from "@/lib/latex";
 
 interface ResultsProps {
@@ -28,6 +30,24 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
   const [refining, setRefining] = useState(false);
   const [refineStatus, setRefineStatus] = useState("");
   const [refineCooldown, setRefineCooldown] = useState(false);
+  const [fillingAll, setFillingAll] = useState(false);
+
+  const fillableAnswers = result.answers.filter((a) => a.elementId);
+
+  async function fillField(elementId: string, answer: string): Promise<boolean> {
+    const resp = await sendToContentScript({ type: "FILL_FIELD", payload: { id: elementId, value: answer } });
+    if (!resp || resp.type !== "FILL_RESULT") return false;
+    return (resp as Extract<Message, { type: "FILL_RESULT" }>).payload.success;
+  }
+
+  async function fillAll() {
+    if (fillingAll) return;
+    setFillingAll(true);
+    for (const a of fillableAnswers) {
+      await fillField(a.elementId!, a.answer);
+    }
+    setFillingAll(false);
+  }
 
   function downloadPdf() {
     if (!result.pdfBlob) return;
@@ -80,12 +100,24 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
       const compileResult = await compileLatex({ template: templateForCompile, modifiedMainContent: refinedTex });
 
       if (compileResult.pdfBlob) {
-        const updatedResult = {
+        const updatedResult: GenerationResult = {
           ...result,
           pdfBlob: compileResult.pdfBlob,
           modifiedTex: refinedTex,
           latexErrors: compileResult.errors,
         };
+        // Re-scan keywords on refined CV
+        if (result.keywordScanBefore && result.jobDescription) {
+          try {
+            setRefineStatus("Re-scanning keywords...");
+            const scanRaw = await chatCompletion(apiKey, model, [
+              { role: "user", content: buildKeywordScanPrompt(result.jobDescription, refinedTex) },
+            ]);
+            const parsed = JSON.parse(scanRaw.replace(/^```(?:json)?\n?/, "").replace(/\n?```\s*$/, "").trim());
+            updatedResult.keywordScanAfter = { keywords: parsed };
+            updatedResult.keywordScanBefore = result.keywordScanBefore;
+          } catch { /* silently ignore */ }
+        }
         setResult(updatedResult);
         setFeedback("");
         setRefineStatus("");
@@ -105,6 +137,8 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
             modifiedTex: refinedTex,
             answers: result.answers,
             latexErrors: compileResult.errors,
+            keywordScanBefore: updatedResult.keywordScanBefore,
+            keywordScanAfter: updatedResult.keywordScanAfter,
           });
         } catch { /* quota exceeded — skip */ }
       } else {
@@ -257,6 +291,11 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
         </div>
       ) : null}
 
+      {/* ATS Keyword Scan */}
+      {result.keywordScanBefore && result.keywordScanAfter && (
+        <KeywordScanCard before={result.keywordScanBefore} after={result.keywordScanAfter} />
+      )}
+
       {/* Match Score */}
       {result.modifiedTex && result.jobDescription && (
         <div className="mb-4">
@@ -340,9 +379,20 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
       {/* Answers */}
       {result.answers.length > 0 && (
         <div className="mb-4 space-y-3">
-          <h2 className="text-sm font-medium text-gray-700">Answers</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-gray-700">Answers</h2>
+            {fillableAnswers.length > 0 && (
+              <button
+                onClick={fillAll}
+                disabled={fillingAll}
+                className="cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-purple-600 hover:bg-purple-50 transition-colors disabled:opacity-50"
+              >
+                {fillingAll ? "Filling..." : "Fill All"}
+              </button>
+            )}
+          </div>
           {result.answers.map((item, i) => (
-            <AnswerCard key={i} item={item} />
+            <AnswerCard key={i} item={item} onFill={fillField} />
           ))}
         </div>
       )}
