@@ -71,4 +71,6 @@ export type Message =
   | { type: "PING" }
   | { type: "PONG" }
   | { type: "ELEMENT_SELECTED"; payload: { id: string; text: string } }
-  | { type: "ELEMENT_DESELECTED"; payload: { id: string } };
+  | { type: "ELEMENT_DESELECTED"; payload: { id: string } }
+  | { type: "FILL_FIELD"; payload: { id: string; value: string } }
+  | { type: "FILL_RESULT"; payload: { id: string; success: boolean; error?: string } };

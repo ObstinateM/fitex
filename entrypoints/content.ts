@@ -123,6 +123,86 @@ export default defineContentScript({
       selectedEls.clear();
     }
 
+    const FILLABLE_SELECTOR =
+      'input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=checkbox]):not([type=radio]), textarea, [contenteditable="true"]';
+
+    function findFormField(el: HTMLElement): HTMLElement | null {
+      // 1. Element itself is fillable
+      if (el.matches(FILLABLE_SELECTOR)) return el;
+
+      // 2. Label with for attribute
+      if (el.tagName === "LABEL") {
+        const forId = el.getAttribute("for");
+        if (forId) {
+          const target = document.getElementById(forId);
+          if (target?.matches(FILLABLE_SELECTOR)) return target;
+        }
+      }
+
+      // 3. Contains a fillable child
+      const child = el.querySelector<HTMLElement>(FILLABLE_SELECTOR);
+      if (child) return child;
+
+      // 4. Next siblings (up to 3)
+      let sibling = el.nextElementSibling;
+      for (let i = 0; i < 3 && sibling; i++, sibling = sibling.nextElementSibling) {
+        if ((sibling as HTMLElement).matches(FILLABLE_SELECTOR)) return sibling as HTMLElement;
+        const desc = sibling.querySelector<HTMLElement>(FILLABLE_SELECTOR);
+        if (desc) return desc;
+      }
+
+      // 5. Walk up ancestors (up to 4), check each level's next siblings
+      let ancestor = el.parentElement;
+      for (let lvl = 0; lvl < 4 && ancestor; lvl++, ancestor = ancestor.parentElement) {
+        let sib = ancestor.nextElementSibling;
+        for (let j = 0; j < 2 && sib; j++, sib = sib.nextElementSibling) {
+          if ((sib as HTMLElement).matches(FILLABLE_SELECTOR)) return sib as HTMLElement;
+          const desc = sib.querySelector<HTMLElement>(FILLABLE_SELECTOR);
+          if (desc) return desc;
+        }
+      }
+
+      // 6. aria-labelledby reverse lookup
+      const elId = el.id;
+      if (elId) {
+        const labeled = document.querySelector<HTMLElement>(`[aria-labelledby="${CSS.escape(elId)}"]`);
+        if (labeled?.matches(FILLABLE_SELECTOR)) return labeled;
+      }
+
+      return null;
+    }
+
+    function fillField(field: HTMLElement, value: string) {
+      if (field.getAttribute("contenteditable") === "true") {
+        field.textContent = value;
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+      } else {
+        // Use native setter to bypass React's synthetic setter
+        const proto =
+          field instanceof HTMLTextAreaElement
+            ? HTMLTextAreaElement.prototype
+            : HTMLInputElement.prototype;
+        const nativeSetter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
+        if (nativeSetter) {
+          nativeSetter.call(field, value);
+        } else {
+          (field as HTMLInputElement).value = value;
+        }
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+        field.dispatchEvent(new Event("blur", { bubbles: true }));
+      }
+    }
+
+    function flashField(field: HTMLElement) {
+      const prev = field.style.outline;
+      field.style.outline = "2px solid #3b82f6";
+      setTimeout(() => {
+        field.style.outline = prev;
+      }, 1000);
+    }
+
     chrome.runtime.onMessage.addListener(
       (message: Message, _sender, sendResponse) => {
         switch (message.type) {
@@ -142,6 +222,27 @@ export default defineContentScript({
               selectedEls.delete(message.payload.id);
             }
             break;
+          }
+          case "FILL_FIELD": {
+            const { id, value } = message.payload;
+            const el = selectedEls.get(id);
+            if (!el) {
+              sendResponse({ type: "FILL_RESULT", payload: { id, success: false, error: "Element no longer on page" } } satisfies Message);
+              return true;
+            }
+            const field = findFormField(el);
+            if (!field) {
+              sendResponse({ type: "FILL_RESULT", payload: { id, success: false, error: "No form field found near element" } } satisfies Message);
+              return true;
+            }
+            try {
+              fillField(field, value);
+              flashField(field);
+              sendResponse({ type: "FILL_RESULT", payload: { id, success: true } } satisfies Message);
+            } catch (err) {
+              sendResponse({ type: "FILL_RESULT", payload: { id, success: false, error: String(err) } } satisfies Message);
+            }
+            return true;
           }
           case "PING":
             sendResponse({ type: "PONG" } satisfies Message);
