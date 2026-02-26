@@ -13,9 +13,10 @@ import ImageUploader from "./ImageUploader";
 
 interface SettingsProps {
   onClose: () => void;
+  onOpenStories: () => void;
 }
 
-export default function SettingsModal({ onClose }: SettingsProps) {
+export default function SettingsModal({ onClose, onOpenStories }: SettingsProps) {
   const [apiKey, setApiKeyState] = useState("");
   const [compiler, setCompilerState] = useState<LatexCompiler>("pdflatex");
   const [model, setModelState] = useState<OpenAIModel>("gpt-5.2");
@@ -129,6 +130,17 @@ export default function SettingsModal({ onClose }: SettingsProps) {
 
         {/* Profile image */}
         <ImageUploader value={profileImage} onChange={setProfileImageState} />
+
+        {/* Stories */}
+        <button
+          onClick={onOpenStories}
+          className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          <span>Manage Stories</span>
+          <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
 
         {/* Save */}
         <button

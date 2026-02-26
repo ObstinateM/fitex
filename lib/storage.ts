@@ -1,4 +1,4 @@
-import type { TexTemplate, LatexCompiler, OpenAIModel, AuxFile, HistoryEntry } from "./types";
+import type { TexTemplate, LatexCompiler, OpenAIModel, AuxFile, HistoryEntry, Story } from "./types";
 
 const KEYS = {
   apiKey: "openai_api_key",
@@ -9,6 +9,7 @@ const KEYS = {
   context: "user_context",
   profileImage: "profile_image",
   history: "cv_history",
+  stories: "user_stories",
 } as const;
 
 async function get<T>(key: string): Promise<T | undefined> {
@@ -107,4 +108,28 @@ export async function deleteHistoryEntry(id: string): Promise<void> {
 
 export async function clearHistory(): Promise<void> {
   await chrome.storage.local.remove(KEYS.history);
+}
+
+// Stories
+export async function getStories(): Promise<Story[]> {
+  return (await get<Story[]>(KEYS.stories)) ?? [];
+}
+
+export async function addStory(story: Story): Promise<void> {
+  const stories = await getStories();
+  stories.unshift(story);
+  await set(KEYS.stories, stories);
+}
+
+export async function updateStory(id: string, updates: Partial<Omit<Story, "id" | "createdAt">>): Promise<void> {
+  const stories = await getStories();
+  const idx = stories.findIndex((s) => s.id === id);
+  if (idx === -1) return;
+  stories[idx] = { ...stories[idx], ...updates, updatedAt: Date.now() };
+  await set(KEYS.stories, stories);
+}
+
+export async function deleteStory(id: string): Promise<void> {
+  const stories = await getStories();
+  await set(KEYS.stories, stories.filter((s) => s.id !== id));
 }
