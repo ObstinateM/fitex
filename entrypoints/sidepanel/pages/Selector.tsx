@@ -50,7 +50,7 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
     }
     let cancelled = false;
     async function estimate() {
-      const [template, model] = await Promise.all([getTemplate(), getModel()]);
+      const [template, model, stories] = await Promise.all([getTemplate(), getModel(), getStories()]);
       if (cancelled) return;
       const templateTokens = template ? Math.ceil(template.mainContent.length / 4) : 0;
       const jobDescTokens = elements
@@ -58,13 +58,27 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
         .reduce((sum, el) => sum + Math.ceil((el.text.length + (el.guidance?.length ?? 0)) / 4), 0);
       const guidanceTokens = Math.ceil(guidance.length / 4);
       const systemOverhead = 500;
-      const inputTokens = templateTokens + jobDescTokens + guidanceTokens + systemOverhead;
+
+      // Relevance filter call: sends story titles + tags + job description
+      const storySummaryTokens = stories.reduce(
+        (sum, s) => sum + Math.ceil((s.title.length + s.tags.join(", ").length) / 4), 0,
+      );
+      const filterInput = stories.length > 0 ? storySummaryTokens + jobDescTokens + 300 : 0;
+      const filterOutput = stories.length > 0 ? Math.min(stories.length * 30, 500) : 0;
+
+      // Estimate tokens from selected stories injected into prompts (~half of stories selected on average)
+      const avgSelectedCount = Math.ceil(stories.length * 0.5);
+      const storyContentTokens = stories
+        .slice(0, avgSelectedCount)
+        .reduce((sum, s) => sum + Math.ceil((s.title.length + s.description.length + s.tags.join(", ").length) / 4), 0);
+
+      const inputTokens = templateTokens + jobDescTokens + guidanceTokens + storyContentTokens + systemOverhead;
       const outputTokens = templateTokens;
       const questionCount = elements.filter((el) => el.tag === "question").length;
-      const qInput = questionCount * (templateTokens + jobDescTokens + 300);
+      const qInput = questionCount * (templateTokens + jobDescTokens + storyContentTokens + 300);
       const qOutput = questionCount * 500;
-      const totalInput = inputTokens + qInput;
-      const totalOutput = outputTokens + qOutput;
+      const totalInput = filterInput + inputTokens + qInput;
+      const totalOutput = filterOutput + outputTokens + qOutput;
       const pricing = MODEL_PRICING[model];
       const cost = (totalInput / 1_000_000) * pricing.input + (totalOutput / 1_000_000) * pricing.output;
       setCostEstimate({ tokens: totalInput + totalOutput, cost });
