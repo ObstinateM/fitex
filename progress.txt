@@ -41,5 +41,14 @@
   - User confirms/modifies selections → generation proceeds with selected stories
   - Cancel returns to idle state
   - StatusBar hidden while confirmation is showing
-### Module 6: Prompt modifications — TODO
-### Module 7: Generation flow update — TODO
+### Module 6: Prompt modifications ✅
+- Added `formatStories` helper in `lib/prompts.ts` — formats Story[] as XML with title, description, and tags per story
+- Added optional `stories` parameter to `buildCvTailoringPrompt` — injects `<candidate_stories>` block, updated rules to reference stories as additional context
+- Added optional `stories` parameter to `buildQuestionAnswerPrompt` — injects `<candidate_stories>` block, updated rules to draw on stories for answers
+- Stories are placed before guidance/CV in the prompt so the model sees them as context before the main content
+### Module 7: Generation flow update ✅
+- Passed `selectedStories` to `buildCvTailoringPrompt` in the CV tailoring step so the AI references real experience when adapting the CV
+- Passed `selectedStories` to `buildQuestionAnswerPrompt` in the question answering step so the AI draws on specific missions/projects when writing answers
+- The full flow is now: collect inputs → filter relevant stories → show confirmation → inject confirmed stories into CV tailoring + question answering prompts
+
+## All modules complete ✅
