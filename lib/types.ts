@@ -60,6 +60,15 @@ export interface GenerationResult {
   keywordScanAfter?: KeywordScanResult;
 }
 
+export interface Story {
+  id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 export type OpenAIModel = "gpt-5.2" | "gpt-4.1" | "gpt-4.1-mini" | "gpt-4.1-nano" | "o4-mini";
 
 // Message types for content script <-> side panel communication

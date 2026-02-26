@@ -4,6 +4,7 @@ import Onboarding from "./pages/Onboarding";
 import Selector from "./pages/Selector";
 import Results from "./pages/Results";
 import History from "./pages/History";
+import Stories from "./pages/Stories";
 import SettingsModal from "./components/SettingsModal";
 import type { GenerationResult, SelectedElement, HistoryEntry } from "@/lib/types";
 
@@ -37,7 +38,7 @@ class ErrorBoundary extends Component<
   }
 }
 
-type Page = "onboarding" | "selector" | "results" | "settings" | "history";
+type Page = "onboarding" | "selector" | "results" | "settings" | "history" | "stories";
 
 async function blobToBase64(blob: Blob): Promise<string> {
   const buffer = await blob.arrayBuffer();
@@ -149,7 +150,7 @@ function AppInner() {
     setPage("results");
   }
 
-  const showSettings = page !== "onboarding" && page !== "settings";
+  const showSettings = page !== "onboarding" && page !== "settings" && page !== "stories";
   const showTabBar = page === "selector" || page === "history";
   const activeTab = page === "history" ? "history" : "generate";
 
@@ -169,7 +170,15 @@ function AppInner() {
           </button>
         </div>
       )}
-      {page === "settings" && <SettingsModal onClose={() => setPage(returnPage)} />}
+      {page === "settings" && (
+        <SettingsModal
+          onClose={() => setPage(returnPage)}
+          onOpenStories={() => setPage("stories")}
+        />
+      )}
+      {page === "stories" && (
+        <Stories onBack={() => setPage("settings")} />
+      )}
 
       {page === "onboarding" && (
         <Onboarding onComplete={() => setPage("selector")} />
