@@ -29,6 +29,17 @@
 - Added `buildStoryRelevancePrompt` to `lib/prompts.ts` — takes story summaries (id + title + tags) and job description, returns JSON array of selections with reasons
 - Created `lib/stories.ts` with `filterRelevantStories` function — sends only titles/tags to keep the call cheap, validates returned IDs against input stories
 - Uses `chatCompletion` (non-streaming) with the user's selected model
-### Module 5: Inline confirmation component — TODO
+### Module 5: Inline confirmation component ✅
+- Created `entrypoints/sidepanel/components/StoryConfirmation.tsx`
+  - Shows AI-picked stories as pre-checked checkboxes with relevance reasons
+  - Shows remaining stories as unchecked checkboxes for manual addition
+  - "Confirm & Generate" and "Cancel" buttons
+  - Displays count of selected stories in header
+- Integrated into `Selector.tsx` generation flow:
+  - After collecting inputs, fetches all stories and runs relevance filter
+  - Pauses generation with a Promise-based confirmation UI
+  - User confirms/modifies selections → generation proceeds with selected stories
+  - Cancel returns to idle state
+  - StatusBar hidden while confirmation is showing
 ### Module 6: Prompt modifications — TODO
 ### Module 7: Generation flow update — TODO
