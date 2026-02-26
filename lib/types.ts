@@ -69,6 +69,11 @@ export interface Story {
   updatedAt: number;
 }
 
+export interface StorySelection {
+  id: string;
+  reason: string;
+}
+
 export type OpenAIModel = "gpt-5.2" | "gpt-4.1" | "gpt-4.1-mini" | "gpt-4.1-nano" | "o4-mini";
 
 // Message types for content script <-> side panel communication
