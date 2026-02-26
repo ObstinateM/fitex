@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { getStories, addStory, updateStory, deleteStory } from "@/lib/storage";
+import { getStories, addStory, updateStory, deleteStory, getApiKey, getModel } from "@/lib/storage";
+import { chatCompletion } from "@/lib/openai";
+import { buildStoryEnhancePrompt } from "@/lib/prompts";
 import type { Story } from "@/lib/types";
 
 interface StoriesProps {
@@ -18,6 +20,30 @@ export default function Stories({ onBack }: StoriesProps) {
   const [newDescription, setNewDescription] = useState("");
   const [newTags, setNewTags] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [enhancingId, setEnhancingId] = useState<string | null>(null);
+  const [enhancingNew, setEnhancingNew] = useState(false);
+
+  async function handleEnhance(
+    notes: string,
+    title: string,
+    onResult: (description: string, tags: string[]) => void,
+    setLoading: (v: boolean) => void,
+  ) {
+    if (!notes.trim()) return;
+    setLoading(true);
+    try {
+      const [apiKey, model] = await Promise.all([getApiKey(), getModel()]);
+      if (!apiKey) throw new Error("No API key configured");
+      const prompt = buildStoryEnhancePrompt(notes, title);
+      const raw = await chatCompletion(apiKey, model, [{ role: "user", content: prompt }]);
+      const parsed = JSON.parse(raw) as { description: string; tags: string[] };
+      onResult(parsed.description, parsed.tags);
+    } catch (e) {
+      console.error("Enhance failed:", e);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     getStories().then(setStories);
@@ -121,13 +147,32 @@ export default function Stories({ onBack }: StoriesProps) {
               placeholder="Tags (comma-separated, e.g. Python, Leadership, AWS)"
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
             />
-            <button
-              onClick={handleAdd}
-              disabled={!newTitle.trim()}
-              className="w-full cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Add Story
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleAdd}
+                disabled={!newTitle.trim()}
+                className="flex-1 cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Add Story
+              </button>
+              <button
+                onClick={() =>
+                  handleEnhance(
+                    newDescription,
+                    newTitle,
+                    (desc, tags) => {
+                      setNewDescription(desc);
+                      setNewTags(tags.join(", "));
+                    },
+                    setEnhancingNew,
+                  )
+                }
+                disabled={!newDescription.trim() || enhancingNew}
+                className="cursor-pointer rounded-lg border border-purple-300 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {enhancingNew ? "Enhancing..." : "Enhance"}
+              </button>
+            </div>
           </div>
         )}
 
@@ -211,6 +256,23 @@ export default function Stories({ onBack }: StoriesProps) {
                           className="flex-1 cursor-pointer rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                         >
                           Save
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleEnhance(
+                              editDescription,
+                              editTitle,
+                              (desc, tags) => {
+                                setEditDescription(desc);
+                                setEditTags(tags.join(", "));
+                              },
+                              (v) => setEnhancingId(v ? story.id : null),
+                            )
+                          }
+                          disabled={!editDescription.trim() || enhancingId === story.id}
+                          className="cursor-pointer rounded-lg border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {enhancingId === story.id ? "Enhancing..." : "Enhance"}
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
