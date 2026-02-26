@@ -216,7 +216,7 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
       if (hasJobDescription && template) {
         // Step 1: Tailor CV + scan keywords (before) in parallel
         setStatus("Tailoring CV & scanning keywords...");
-        const cvPrompt = buildCvTailoringPrompt(template.mainContent, jobDescription, guidance, context);
+        const cvPrompt = buildCvTailoringPrompt(template.mainContent, jobDescription, guidance, context, selectedStories);
 
         abortRef.current = new AbortController();
 
@@ -275,7 +275,7 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
         setStatus(`Answering ${questions.length} question(s)...`);
         const cvSource = template?.mainContent ?? "";
         const answerPromises = questions.map(async (q) => {
-          const prompt = buildQuestionAnswerPrompt(q.text, jobDescription, cvSource, context, q.guidance);
+          const prompt = buildQuestionAnswerPrompt(q.text, jobDescription, cvSource, context, q.guidance, selectedStories);
           const answer = await chatCompletion(apiKey, model, [
             { role: "user", content: prompt },
           ]);
