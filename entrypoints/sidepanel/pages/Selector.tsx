@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import type { GenerationResult, SelectedElement, ElementTag, OpenAIModel, Story, StorySelection } from "@/lib/types";
+import type { GenerationResult, SelectedElement, ElementTag, OpenAIModel, Story, StorySelection, KeywordScanResult } from "@/lib/types";
 import { sendToContentScript, getActiveTabId, onMessage } from "@/lib/messaging";
 import { getApiKey, getTemplate, getModel, getContext, getProfileImage, getStories } from "@/lib/storage";
 import { streamChatCompletion, chatCompletion } from "@/lib/openai";
@@ -10,6 +10,7 @@ import ElementList from "../components/ElementList";
 import GuidanceEditor from "../components/GuidanceEditor";
 import StatusBar from "../components/StatusBar";
 import StoryConfirmation from "../components/StoryConfirmation";
+import PreScanCard from "../components/PreScanCard";
 
 const MODEL_PRICING: Record<OpenAIModel, { input: number; output: number }> = {
   "gpt-5.2":      { input: 2.0,  output: 8.0 },
@@ -42,6 +43,49 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
     selections: StorySelection[];
     resolve: (selectedIds: string[] | null) => void;
   } | null>(null);
+
+  // Pre-scan state
+  const [preScan, setPreScan] = useState<KeywordScanResult | null>(null);
+  const [preScanLoading, setPreScanLoading] = useState(false);
+
+  // Debounced pre-scan: triggers 2s after job-description elements change
+  useEffect(() => {
+    const jobDescElements = elements.filter((el) => el.tag === "job-description");
+    if (jobDescElements.length === 0) {
+      setPreScan(null);
+      setPreScanLoading(false);
+      return;
+    }
+
+    setPreScanLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const [apiKey, template] = await Promise.all([getApiKey(), getTemplate()]);
+        if (!apiKey || !template) {
+          setPreScanLoading(false);
+          return;
+        }
+        const jobDescription = jobDescElements
+          .map((el) => el.guidance ? `${el.text}\n\n[Focus note: ${el.guidance}]` : el.text)
+          .join("\n\n");
+        const raw = await chatCompletion(apiKey, "gpt-4.1-nano", [
+          { role: "user", content: buildKeywordScanPrompt(jobDescription, template.mainContent) },
+        ]);
+        const parsed = JSON.parse(raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```\s*$/, "").trim());
+        if (Array.isArray(parsed)) {
+          setPreScan({ keywords: parsed });
+        } else {
+          setPreScan({ keywords: parsed.keywords, atsPassRate: parsed.atsPassRate });
+        }
+      } catch {
+        // Silently skip — pre-scan is non-critical
+      } finally {
+        setPreScanLoading(false);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [elements]);
 
   useEffect(() => {
     if (elements.length === 0) {
@@ -80,11 +124,16 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
       // Salary estimation: sends job description + CV template
       const salaryInput = jobDescTokens + templateTokens + 400;
       const salaryOutput = 200;
+      // Pre-scan keyword scan (gpt-4.1-nano): job description + base CV template
+      const preScanInput = jobDescTokens + templateTokens + 400;
+      const preScanOutput = 300;
+      const nanoPricing = MODEL_PRICING["gpt-4.1-nano"];
+      const preScanCost = (preScanInput / 1_000_000) * nanoPricing.input + (preScanOutput / 1_000_000) * nanoPricing.output;
       const totalInput = filterInput + inputTokens + qInput + salaryInput;
       const totalOutput = filterOutput + outputTokens + qOutput + salaryOutput;
       const pricing = MODEL_PRICING[model];
-      const cost = (totalInput / 1_000_000) * pricing.input + (totalOutput / 1_000_000) * pricing.output;
-      setCostEstimate({ tokens: totalInput + totalOutput, cost });
+      const cost = (totalInput / 1_000_000) * pricing.input + (totalOutput / 1_000_000) * pricing.output + preScanCost;
+      setCostEstimate({ tokens: totalInput + totalOutput + preScanInput + preScanOutput, cost });
     }
     estimate();
     return () => { cancelled = true; };
@@ -411,6 +460,11 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
         <p className="mb-3 text-sm text-red-600">{status}</p>
       )}
       {generating && !storyConfirmation && <div className="mb-3"><StatusBar message={status} /></div>}
+
+      {/* Pre-generation keyword scan */}
+      {(preScan || preScanLoading) && !generating && (
+        <PreScanCard result={preScan} loading={preScanLoading} />
+      )}
 
       {costEstimate && !generating && (
         <p className="mb-2 text-center text-xs text-gray-400">
