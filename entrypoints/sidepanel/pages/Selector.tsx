@@ -129,8 +129,12 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
       const preScanOutput = 300;
       const nanoPricing = MODEL_PRICING["gpt-4.1-nano"];
       const preScanCost = (preScanInput / 1_000_000) * nanoPricing.input + (preScanOutput / 1_000_000) * nanoPricing.output;
-      const totalInput = filterInput + inputTokens + qInput + salaryInput;
-      const totalOutput = filterOutput + outputTokens + qOutput + salaryOutput;
+      // Before/after keyword scans during generation (use selected model)
+      const kwScanInput = jobDescTokens + templateTokens + 400;
+      const kwScanOutput = 300;
+      const kwScanCount = 2; // before scan + after scan
+      const totalInput = filterInput + inputTokens + qInput + salaryInput + kwScanInput * kwScanCount;
+      const totalOutput = filterOutput + outputTokens + qOutput + salaryOutput + kwScanOutput * kwScanCount;
       const pricing = MODEL_PRICING[model];
       const cost = (totalInput / 1_000_000) * pricing.input + (totalOutput / 1_000_000) * pricing.output + preScanCost;
       setCostEstimate({ tokens: totalInput + totalOutput + preScanInput + preScanOutput, cost });
