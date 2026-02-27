@@ -115,7 +115,11 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
               { role: "user", content: buildKeywordScanPrompt(result.jobDescription, refinedTex) },
             ]);
             const parsed = JSON.parse(scanRaw.replace(/^```(?:json)?\n?/, "").replace(/\n?```\s*$/, "").trim());
-            updatedResult.keywordScanAfter = { keywords: parsed };
+            if (Array.isArray(parsed)) {
+              updatedResult.keywordScanAfter = { keywords: parsed };
+            } else {
+              updatedResult.keywordScanAfter = { keywords: parsed.keywords, atsPassRate: parsed.atsPassRate };
+            }
             updatedResult.keywordScanBefore = result.keywordScanBefore;
           } catch { /* silently ignore */ }
         }

@@ -34,6 +34,7 @@ export interface KeywordItem {
 
 export interface KeywordScanResult {
   keywords: KeywordItem[];
+  atsPassRate?: number; // 0-100 estimated ATS pass rate
 }
 
 export interface SalaryEstimate {
