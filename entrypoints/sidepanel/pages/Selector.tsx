@@ -243,7 +243,11 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
         ]).then((raw) => {
           try {
             const parsed = JSON.parse(raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```\s*$/, "").trim());
-            keywordScanBefore = { keywords: parsed };
+            if (Array.isArray(parsed)) {
+              keywordScanBefore = { keywords: parsed };
+            } else {
+              keywordScanBefore = { keywords: parsed.keywords, atsPassRate: parsed.atsPassRate };
+            }
           } catch { /* silently ignore */ }
         }).catch(() => { /* silently ignore */ });
 
@@ -271,7 +275,11 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
             { role: "user", content: buildKeywordScanPrompt(jobDescription, modifiedTex) },
           ]);
           const afterParsed = JSON.parse(afterRaw.replace(/^```(?:json)?\n?/, "").replace(/\n?```\s*$/, "").trim());
-          keywordScanAfter = { keywords: afterParsed };
+          if (Array.isArray(afterParsed)) {
+            keywordScanAfter = { keywords: afterParsed };
+          } else {
+            keywordScanAfter = { keywords: afterParsed.keywords, atsPassRate: afterParsed.atsPassRate };
+          }
         } catch { /* silently ignore */ }
 
         // Step 2: Compile LaTeX
