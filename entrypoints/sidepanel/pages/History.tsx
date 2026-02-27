@@ -89,6 +89,17 @@ export default function History({ onView, onRerun }: HistoryProps) {
                 })}
               </p>
               <div className="flex gap-1">
+                {entry.keywordScanAfter?.atsPassRate != null && (
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                    entry.keywordScanAfter.atsPassRate >= 75
+                      ? "bg-green-50 text-green-700"
+                      : entry.keywordScanAfter.atsPassRate >= 50
+                        ? "bg-yellow-50 text-yellow-700"
+                        : "bg-red-50 text-red-700"
+                  }`}>
+                    ATS {entry.keywordScanAfter.atsPassRate}%
+                  </span>
+                )}
                 {entry.answers.length > 0 && (
                   <span className="rounded bg-purple-50 px-1.5 py-0.5 text-[10px] font-medium text-purple-600">
                     {entry.answers.length} answer{entry.answers.length > 1 ? "s" : ""}
