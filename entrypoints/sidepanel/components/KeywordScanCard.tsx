@@ -44,13 +44,38 @@ export default function KeywordScanCard({ before, after }: KeywordScanCardProps)
       </button>
       {expanded && (
         <div className="mt-2 rounded-lg border border-gray-200 p-3">
-          {/* Summary */}
-          <p className="mb-2 text-xs text-gray-600">
-            <span className="font-semibold text-gray-800">{afterCount}/{totalCount}</span> matched
-            {improved > 0 && (
-              <span className="ml-1 text-green-600 font-medium">(+{improved} improved)</span>
+          {/* Summary + ATS pass-rate */}
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs text-gray-600">
+              <span className="font-semibold text-gray-800">{afterCount}/{totalCount}</span> matched
+              {improved > 0 && (
+                <span className="ml-1 text-green-600 font-medium">(+{improved} improved)</span>
+              )}
+            </p>
+            {after.atsPassRate != null && (
+              <div className="flex items-center gap-1.5">
+                {before.atsPassRate != null && (
+                  <span className="text-[11px] text-gray-400 line-through">{before.atsPassRate}%</span>
+                )}
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    after.atsPassRate >= 70
+                      ? "bg-green-100 text-green-700"
+                      : after.atsPassRate >= 45
+                        ? "bg-yellow-100 text-yellow-700"
+                        : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {after.atsPassRate}% ATS
+                </span>
+                {before.atsPassRate != null && after.atsPassRate > before.atsPassRate && (
+                  <span className="text-[11px] font-medium text-green-600">
+                    +{after.atsPassRate - before.atsPassRate}
+                  </span>
+                )}
+              </div>
             )}
-          </p>
+          </div>
 
           {/* Progress bar */}
           <div className="relative mb-3 h-2 rounded-full bg-gray-100">
