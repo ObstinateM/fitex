@@ -36,6 +36,15 @@ export interface KeywordScanResult {
   keywords: KeywordItem[];
 }
 
+export interface SalaryEstimate {
+  currency: string;
+  marketLow: number;
+  marketHigh: number;
+  recommendedAsk: number;
+  justification: string;
+  confidence: "low" | "medium" | "high";
+}
+
 export interface HistoryEntry {
   id: string;
   createdAt: number;
@@ -48,6 +57,7 @@ export interface HistoryEntry {
   guidance?: string;
   keywordScanBefore?: KeywordScanResult;
   keywordScanAfter?: KeywordScanResult;
+  salaryEstimate?: SalaryEstimate;
 }
 
 export interface GenerationResult {
@@ -58,6 +68,7 @@ export interface GenerationResult {
   jobDescription: string;
   keywordScanBefore?: KeywordScanResult;
   keywordScanAfter?: KeywordScanResult;
+  salaryEstimate?: SalaryEstimate;
 }
 
 export interface Story {

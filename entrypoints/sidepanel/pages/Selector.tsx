@@ -3,7 +3,7 @@ import type { GenerationResult, SelectedElement, ElementTag, OpenAIModel, Story,
 import { sendToContentScript, getActiveTabId, onMessage } from "@/lib/messaging";
 import { getApiKey, getTemplate, getModel, getContext, getProfileImage, getStories } from "@/lib/storage";
 import { streamChatCompletion, chatCompletion } from "@/lib/openai";
-import { buildCvTailoringPrompt, buildQuestionAnswerPrompt, buildKeywordScanPrompt } from "@/lib/prompts";
+import { buildCvTailoringPrompt, buildQuestionAnswerPrompt, buildKeywordScanPrompt, buildSalaryEstimatePrompt } from "@/lib/prompts";
 import { compileLatex } from "@/lib/latex";
 import { filterRelevantStories } from "@/lib/stories";
 import ElementList from "../components/ElementList";
@@ -77,8 +77,11 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
       const questionCount = elements.filter((el) => el.tag === "question").length;
       const qInput = questionCount * (templateTokens + jobDescTokens + storyContentTokens + 300);
       const qOutput = questionCount * 500;
-      const totalInput = filterInput + inputTokens + qInput;
-      const totalOutput = filterOutput + outputTokens + qOutput;
+      // Salary estimation: sends job description + CV template
+      const salaryInput = jobDescTokens + templateTokens + 400;
+      const salaryOutput = 200;
+      const totalInput = filterInput + inputTokens + qInput + salaryInput;
+      const totalOutput = filterOutput + outputTokens + qOutput + salaryOutput;
       const pricing = MODEL_PRICING[model];
       const cost = (totalInput / 1_000_000) * pricing.input + (totalOutput / 1_000_000) * pricing.output;
       setCostEstimate({ tokens: totalInput + totalOutput, cost });
@@ -226,6 +229,7 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
       let latexErrors: string[] = [];
       let keywordScanBefore: import("@/lib/types").KeywordScanResult | undefined;
       let keywordScanAfter: import("@/lib/types").KeywordScanResult | undefined;
+      let salaryEstimate: import("@/lib/types").SalaryEstimate | undefined;
 
       if (hasJobDescription && template) {
         // Step 1: Tailor CV + scan keywords (before) in parallel
@@ -283,8 +287,10 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
         latexErrors = compileResult.errors;
       }
 
-      // Step 3: Answer questions in parallel
-      const answers = [];
+      // Step 3: Answer questions + estimate salary in parallel
+      const answers: import("@/lib/types").AnswerItem[] = [];
+      const parallelTasks: Promise<void>[] = [];
+
       if (questions.length > 0) {
         setStatus(`Answering ${questions.length} question(s)...`);
         const cvSource = template?.mainContent ?? "";
@@ -295,8 +301,26 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
           ]);
           return { question: q.text, answer, elementId: q.id };
         });
-        answers.push(...(await Promise.all(answerPromises)));
+        parallelTasks.push(
+          Promise.all(answerPromises).then((results) => { answers.push(...results); }),
+        );
       }
+
+      // Salary estimation (non-critical, runs in parallel)
+      if (jobDescription && template) {
+        parallelTasks.push(
+          chatCompletion(apiKey, model, [
+            { role: "user", content: buildSalaryEstimatePrompt(jobDescription, template.mainContent) },
+          ]).then((raw) => {
+            try {
+              const parsed = JSON.parse(raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```\s*$/, "").trim());
+              salaryEstimate = parsed;
+            } catch { /* silently ignore */ }
+          }).catch(() => { /* silently ignore */ }),
+        );
+      }
+
+      if (parallelTasks.length > 0) await Promise.all(parallelTasks);
 
       onGenerated(
         {
@@ -307,6 +331,7 @@ export default function Selector({ previousElements, previousGuidance, onGenerat
           jobDescription,
           keywordScanBefore,
           keywordScanAfter,
+          salaryEstimate,
         },
         elements,
         guidance,
