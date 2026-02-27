@@ -111,6 +111,7 @@ function AppInner() {
           guidance,
           keywordScanBefore: res.keywordScanBefore,
           keywordScanAfter: res.keywordScanAfter,
+          salaryEstimate: res.salaryEstimate,
         };
         await addHistoryEntry(entry);
       } catch {
@@ -145,6 +146,7 @@ function AppInner() {
       jobDescription: entry.jobDescription,
       keywordScanBefore: entry.keywordScanBefore,
       keywordScanAfter: entry.keywordScanAfter,
+      salaryEstimate: entry.salaryEstimate,
     });
     setFromHistory(true);
     setPage("results");

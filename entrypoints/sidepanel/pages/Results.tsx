@@ -4,6 +4,7 @@ import { sendToContentScript } from "@/lib/messaging";
 import PdfViewer from "../components/PdfViewer";
 import AnswerCard from "../components/AnswerCard";
 import KeywordScanCard from "../components/KeywordScanCard";
+import SalaryCard from "../components/SalaryCard";
 import StatusBar from "../components/StatusBar";
 import { getApiKey, getTemplate, getModel, getContext, getProfileImage, addHistoryEntry } from "@/lib/storage";
 import { streamChatCompletion, chatCompletion } from "@/lib/openai";
@@ -294,6 +295,11 @@ export default function Results({ result: initialResult, onBack, backLabel }: Re
       {/* ATS Keyword Scan */}
       {result.keywordScanBefore && result.keywordScanAfter && (
         <KeywordScanCard before={result.keywordScanBefore} after={result.keywordScanAfter} />
+      )}
+
+      {/* Salary Estimate */}
+      {result.salaryEstimate && (
+        <SalaryCard estimate={result.salaryEstimate} />
       )}
 
       {/* Match Score */}
