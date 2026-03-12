@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Compiles modified LaTeX source into a PDF. Uses an external compilation service — no local LaTeX installation required.
+Compiles modified LaTeX source into a PDF. Uses an external compilation service - no local LaTeX installation required.
 
 ## Key Characteristics
 
@@ -14,6 +14,6 @@ Compiles modified LaTeX source into a PDF. Uses an external compilation service 
 
 ## Sub-features
 
-- [Compilation Service](./compilation-service.md) — External API details
-- [Security](./security.md) — Dangerous command blocking
-- [Error Parsing](./error-parsing.md) — LaTeX log parsing
+- [Compilation Service](./compilation-service.md) - External API details
+- [Security](./security.md) - Dangerous command blocking
+- [Error Parsing](./error-parsing.md) - LaTeX log parsing

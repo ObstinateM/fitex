@@ -16,10 +16,10 @@ CRUD operations for professional stories. Accessed from Settings → "Manage Sto
 Inline form revealed by clicking "+ Add":
 
 - **Title** input (required)
-- **Description** textarea (4 rows) — "Describe what you did, how you did it, and why it mattered..."
-- **Tags** input — comma-separated, e.g., "Python, Leadership, AWS"
+- **Description** textarea (4 rows) - "Describe what you did, how you did it, and why it mattered..."
+- **Tags** input - comma-separated, e.g., "Python, Leadership, AWS"
 - **"Add Story"** button (disabled if title empty)
-- **"Enhance"** button — AI polish (see [story-enhancement.md](./story-enhancement.md))
+- **"Enhance"** button - AI polish (see [story-enhancement.md](./story-enhancement.md))
 
 On add:
 1. Creates `Story` object with `crypto.randomUUID()` and `Date.now()` timestamps

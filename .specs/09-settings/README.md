@@ -18,4 +18,4 @@ Central configuration page for all user preferences. Also serves as a navigation
 
 ## Sub-features
 
-- [Settings Fields](./settings-fields.md) — All configurable fields
+- [Settings Fields](./settings-fields.md) - All configurable fields

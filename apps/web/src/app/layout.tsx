@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono, Outfit } from 'next/font/google';
+import { Geist, Geist_Mono, Zain } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/providers';
 
@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-const outfit = Outfit({
+const zain = Zain({
   variable: '--font-display',
   subsets: ['latin'],
   weight: ['700', '800'],
@@ -31,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${zain.variable} antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

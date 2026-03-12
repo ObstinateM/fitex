@@ -15,10 +15,10 @@ Automatically answers job application questions based on the candidate's CV, pro
 
 ## Key Design Decision
 
-**Question answers do NOT receive the global guidance text** — only per-question `questionGuidance`. This prevents CV-specific instructions (e.g., "emphasize Python experience") from leaking into question answers where they don't belong.
+**Question answers do NOT receive the global guidance text** - only per-question `questionGuidance`. This prevents CV-specific instructions (e.g., "emphasize Python experience") from leaking into question answers where they don't belong.
 
 ## Sub-features
 
-- [Question Answer Prompt](./question-answer-prompt.md) — Exact AI prompt
-- [Answer Display and Actions](./answer-display-and-actions.md) — Copy, fill, fill-all
-- [Form Field Auto-Fill](./form-field-auto-fill.md) — How the content script finds and fills form fields
+- [Question Answer Prompt](./question-answer-prompt.md) - Exact AI prompt
+- [Answer Display and Actions](./answer-display-and-actions.md) - Copy, fill, fill-all
+- [Form Field Auto-Fill](./form-field-auto-fill.md) - How the content script finds and fills form fields

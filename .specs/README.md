@@ -1,4 +1,4 @@
-# KNOWLEDGE_EXPORT — CV Assistant Extension
+# KNOWLEDGE_EXPORT - CV Assistant Extension
 
 Complete feature documentation for recreating the application as a webapp. Each directory documents one feature group, with sub-files for each sub-feature.
 

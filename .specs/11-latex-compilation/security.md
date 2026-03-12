@@ -25,7 +25,7 @@ Before sending LaTeX to the compilation service, the modified main content is sc
 ## Scope
 
 - **Only checks**: `modifiedMainContent` (the AI-generated output)
-- **Does NOT check**: auxiliary files (`.cls`, `.sty`, images) — these come from the user's original template and are trusted
+- **Does NOT check**: auxiliary files (`.cls`, `.sty`, images) - these come from the user's original template and are trusted
 
 ## Implementation
 

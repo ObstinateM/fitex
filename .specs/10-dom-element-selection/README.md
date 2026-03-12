@@ -6,7 +6,7 @@ The primary input mechanism. Users click on elements in any webpage to select te
 
 ## Key Characteristics
 
-- Content script injected **on-demand** (not at page load) — only when user activates selection
+- Content script injected **on-demand** (not at page load) - only when user activates selection
 - Visual feedback: blue outline on hover, green outline + background on selection
 - Smart targeting: clicks on inline elements (span, a, strong, etc.) bubble up to the nearest block-level parent
 - Multi-element selection with toggle (click to select, click again to deselect)
@@ -15,10 +15,10 @@ The primary input mechanism. Users click on elements in any webpage to select te
 
 ## Sub-features
 
-- [Content Script Injection](./content-script-injection.md) — How/when the script is injected
-- [Selection Mode](./selection-mode.md) — Visual selection behavior
-- [Element Tagging](./element-tagging.md) — Tagging elements and per-element guidance
-- [Messaging Protocol](./messaging-protocol.md) — Full message contract
+- [Content Script Injection](./content-script-injection.md) - How/when the script is injected
+- [Selection Mode](./selection-mode.md) - Visual selection behavior
+- [Element Tagging](./element-tagging.md) - Tagging elements and per-element guidance
+- [Messaging Protocol](./messaging-protocol.md) - Full message contract
 
 ## Webapp Adaptation Notes
 

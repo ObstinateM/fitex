@@ -117,8 +117,8 @@ The service worker maintains a `panelWindowId` variable (scoped inside the `else
 
 The popup entrypoint consists of two files:
 
-1. **`entrypoints/popup/index.html`** — Minimal HTML shell with a `<div id="root">` mount point and a `<script>` tag loading `main.tsx`.
-2. **`entrypoints/popup/main.tsx`** — Imports `App` from `../sidepanel/App` and the sidepanel's Tailwind CSS, then mounts the React app using `ReactDOM.createRoot`. Rendered inside `React.StrictMode`, identical to the sidepanel entrypoint.
+1. **`entrypoints/popup/index.html`** - Minimal HTML shell with a `<div id="root">` mount point and a `<script>` tag loading `main.tsx`.
+2. **`entrypoints/popup/main.tsx`** - Imports `App` from `../sidepanel/App` and the sidepanel's Tailwind CSS, then mounts the React app using `ReactDOM.createRoot`. Rendered inside `React.StrictMode`, identical to the sidepanel entrypoint.
 
 Because the popup reuses the exact same `App` component and stylesheet, there is zero code duplication between the two rendering modes. All features (onboarding, selection, generation, history, settings) work identically in both.
 

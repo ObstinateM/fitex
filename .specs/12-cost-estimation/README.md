@@ -23,5 +23,5 @@ All API calls in the generation pipeline:
 
 ## Sub-features
 
-- [Token Estimation](./token-estimation.md) — How tokens are estimated per component
-- [Pricing Model](./pricing-model.md) — Per-model pricing and cost formula
+- [Token Estimation](./token-estimation.md) - How tokens are estimated per component
+- [Pricing Model](./pricing-model.md) - Per-model pricing and cost formula

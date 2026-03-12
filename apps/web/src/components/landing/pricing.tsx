@@ -60,7 +60,7 @@ const plans = [
 
 export function Pricing() {
   return (
-    <section className="relative py-32 px-6">
+    <section id="pricing" className="relative py-32 px-6">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 h-px w-2/3 bg-gradient-to-r from-transparent via-border/60 to-transparent" />
 
       <div className="mx-auto max-w-6xl">
@@ -75,7 +75,7 @@ export function Pricing() {
             Pricing
           </span>
           <h2 className="text-4xl sm:text-5xl font-display font-bold tracking-tight">
-            Invest in your career, <span className="text-gradient">not your time</span>
+            Tailor your CV to any job <span className="text-gradient">in 15 seconds.</span>
           </h2>
           <p className="text-muted-foreground mt-4 max-w-lg mx-auto">
             All plans include a 7-day free trial. No credit card required.

@@ -14,7 +14,7 @@ Each question-answer pair is rendered in a card.
 - On click, calls `navigator.clipboard.writeText(item.answer)`
 - On success: sets `copied` to `true`, then resets to `false` after 2 seconds via `setTimeout`
 - Button label toggles reactively: renders `"Copied!"` when `copied` is true, `"Copy"` otherwise
-- **Error handling**: the `catch` block is empty — clipboard write failures (e.g., document not focused, permissions denied) are silently swallowed with no user-visible feedback; the button simply stays as "Copy"
+- **Error handling**: the `catch` block is empty - clipboard write failures (e.g., document not focused, permissions denied) are silently swallowed with no user-visible feedback; the button simply stays as "Copy"
 
 ### Fill Button
 - Only shown if the answer has an `elementId` AND `onFill` callback exists

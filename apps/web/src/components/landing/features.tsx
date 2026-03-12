@@ -11,7 +11,7 @@ const features = [
       </svg>
     ),
     title: 'One CV, every job',
-    description: 'Stop rewriting from scratch. Your CV is automatically reworded to match each job description — so you apply to 5x more positions in the same time.',
+    description: 'Stop rewriting from scratch. Your CV is automatically reworded to match each job description - so you apply to 5x more positions in the same time.',
     accent: 'violet',
   },
   {
@@ -21,7 +21,7 @@ const features = [
       </svg>
     ),
     title: 'Beat the ATS filter',
-    description: 'See your keyword match score before you apply. Know exactly which terms were added to get past automated screening — 94% average match rate.',
+    description: 'See your keyword match score before you apply. Know exactly which terms were added to get past automated screening - 94% average match rate.',
     accent: 'emerald',
   },
   {
@@ -31,7 +31,7 @@ const features = [
       </svg>
     ),
     title: 'Ready-to-send in 15 seconds',
-    description: 'Get a pixel-perfect PDF instantly. No formatting headaches, no broken layouts — download and apply right away.',
+    description: 'Get a pixel-perfect PDF instantly. No formatting headaches, no broken layouts - download and apply right away.',
     accent: 'violet',
   },
   {
@@ -41,7 +41,7 @@ const features = [
       </svg>
     ),
     title: 'Nail every application question',
-    description: 'Application forms filled in seconds. AI crafts tailored answers using your experience and the job context — no more blank stares at "Why this role?"',
+    description: 'Application forms filled in seconds. AI crafts tailored answers using your experience and the job context - no more blank stares at "Why this role?"',
     accent: 'emerald',
   },
   {
@@ -51,7 +51,7 @@ const features = [
       </svg>
     ),
     title: 'Your best stories, always relevant',
-    description: 'Store your career wins once. AI picks the right achievements for each application — your most impressive stories always surface at the right time.',
+    description: 'Store your career wins once. AI picks the right achievements for each application - your most impressive stories always surface at the right time.',
     accent: 'violet',
   },
   {
@@ -61,14 +61,14 @@ const features = [
       </svg>
     ),
     title: 'Apply without leaving the page',
-    description: 'See a job you like? One click captures the description and fills the application form — directly from your browser. No copy-pasting.',
+    description: 'See a job you like? One click captures the description and fills the application form - directly from your browser. No copy-pasting.',
     accent: 'emerald',
   },
 ];
 
 export function Features() {
   return (
-    <section className="relative py-32 px-6">
+    <section id="features" className="relative py-32 px-6">
       {/* Section divider */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 h-px w-2/3 bg-gradient-to-r from-transparent via-border/60 to-transparent" />
 

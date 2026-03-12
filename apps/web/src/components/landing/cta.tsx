@@ -19,8 +19,8 @@ export function CTA() {
           {/* Glow */}
           <div className="absolute inset-0 -z-10 rounded-3xl bg-violet/5 blur-3xl" />
 
-          <div className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm p-12 md:p-16 space-y-8">
-            <h2 className="text-4xl sm:text-5xl font-display font-bold tracking-tight">
+          <div className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm p-12 md:p-16 space-y-5">
+            <h2 className="text-3xl sm:text-4xl font-display font-bold tracking-tight">
               Every hour you spend rewriting your CV<br />
               <span className="text-gradient">is an hour you could be interviewing.</span>
             </h2>
@@ -50,7 +50,7 @@ export function CTA() {
                   />
                   <Button
                     variant="outline"
-                    className="border-violet/30 text-violet-light hover:bg-violet/10 px-5 shrink-0"
+                    className="border-violet/30 text-violet-light hover:bg-violet/10 px-5 shrink-0 self-stretch h-auto"
                   >
                     Send guide
                   </Button>

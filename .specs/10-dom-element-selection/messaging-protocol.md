@@ -54,14 +54,14 @@ async function sendToContentScript(message: Message): Promise<Message | undefine
 }
 ```
 
-Uses `chrome.tabs.sendMessage(tabId, message)` — targets the active tab specifically.
+Uses `chrome.tabs.sendMessage(tabId, message)` - targets the active tab specifically.
 
 ### Content Script → Side Panel
 ```typescript
 chrome.runtime.sendMessage(message).catch(() => {});
 ```
 
-Uses `chrome.runtime.sendMessage` — broadcasts to all extension pages.
+Uses `chrome.runtime.sendMessage` - broadcasts to all extension pages.
 
 ### Side Panel Listener
 ```typescript
@@ -114,7 +114,7 @@ case "DESELECT_ELEMENT": {
 }
 ```
 
-The content script looks up the DOM element by ID in its `selectedEls` Map. If found, it removes the green selection outline CSS class and deletes the entry from the Map. If the element is not found (e.g., the page navigated away), the message is silently ignored. This is a fire-and-forget message with no response — it does not return `true` for async `sendResponse`.
+The content script looks up the DOM element by ID in its `selectedEls` Map. If found, it removes the green selection outline CSS class and deletes the entry from the Map. If the element is not found (e.g., the page navigated away), the message is silently ignored. This is a fire-and-forget message with no response - it does not return `true` for async `sendResponse`.
 
 ## Helper: `getActiveTabId`
 

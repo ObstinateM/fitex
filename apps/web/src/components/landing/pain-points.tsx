@@ -16,7 +16,7 @@ const painPoints = [
     solution: 'Fitex does it in 15 seconds',
   },
   {
-    problem: 'You never know why you get rejected — is it your CV or the ATS?',
+    problem: 'You never know why you get rejected - is it your CV or the ATS?',
     solution: 'See your exact ATS match score before you apply',
   },
   {

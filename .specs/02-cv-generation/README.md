@@ -22,6 +22,6 @@ All orchestrated from the Selector page, with results displayed on the Results p
 
 ## Sub-features
 
-- [Generation Pipeline](./generation-pipeline.md) — Full step-by-step flow
-- [CV Tailoring Prompt](./cv-tailoring-prompt.md) — The exact AI prompt
-- [Streaming](./streaming.md) — SSE streaming implementation
+- [Generation Pipeline](./generation-pipeline.md) - Full step-by-step flow
+- [CV Tailoring Prompt](./cv-tailoring-prompt.md) - The exact AI prompt
+- [Streaming](./streaming.md) - SSE streaming implementation

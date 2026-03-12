@@ -62,7 +62,7 @@ interface HistoryEntry {
 
 - `addHistoryEntry`: prepends new entry to array, slices to max 20
 - Newest entries first (LIFO order)
-- Errors silently caught (e.g., storage quota exceeded — extension storage has limits)
+- Errors silently caught (e.g., storage quota exceeded - extension storage has limits)
 
 ## Refined Versions
 

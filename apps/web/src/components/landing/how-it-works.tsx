@@ -6,26 +6,26 @@ const steps = [
   {
     number: '01',
     title: 'Drop your CV once',
-    description: 'Upload your CV file — any template works. You only do this once, then it\u2019s ready for every application.',
+    description: 'Upload your CV file - any template works. You only do this once, then it\u2019s ready for every application.',
     code: 'cv-template.tex → uploaded',
   },
   {
     number: '02',
     title: 'Paste any job description',
     description: 'Copy from a job posting, or grab it in one click with our browser extension. No reformatting needed.',
-    code: 'Senior Frontend Engineer — React, TS...',
+    code: 'Senior Frontend Engineer - React, TS...',
   },
   {
     number: '03',
     title: 'Download & apply in 15s',
-    description: 'Get a tailored CV with a 94% ATS match score. Download the PDF and hit apply — while others are still rewriting theirs.',
+    description: 'Get a tailored CV with a 94% ATS match score. Download the PDF and hit apply - while others are still rewriting theirs.',
     code: '✓ ATS: 94% → tailored-cv.pdf',
   },
 ];
 
 export function HowItWorks() {
   return (
-    <section className="relative py-32 px-6">
+    <section id="how-it-works" className="relative py-32 px-6">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 h-px w-2/3 bg-gradient-to-r from-transparent via-border/60 to-transparent" />
 
       <div className="mx-auto max-w-5xl">

@@ -6,7 +6,7 @@
 
 - **Type**: Password input
 - **Storage key**: `openai_api_key`
-- **No live validation** (unlike onboarding — user is trusted to enter a valid key)
+- **No live validation** (unlike onboarding - user is trusted to enter a valid key)
 - Changed key takes effect on next generation
 
 ### 2. Model

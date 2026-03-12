@@ -101,7 +101,7 @@ The side panel does **not** display any UI feedback for failed fills. The `fillF
 - `true` → success (content script found and filled the field)
 - `false` → failure (element gone, no field found, or no response)
 
-For the "Fill All" action, failures are silently skipped — the loop continues to the next answer regardless of individual fill results. There is no toast, alert, or error message shown to the user on fill failure.
+For the "Fill All" action, failures are silently skipped - the loop continues to the next answer regardless of individual fill results. There is no toast, alert, or error message shown to the user on fill failure.
 
 ## Webapp Adaptation Notes
 

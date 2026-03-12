@@ -17,6 +17,6 @@ Stores and manages the 20 most recent generated CVs. Allows viewing past results
 
 ## Sub-features
 
-- [Auto-Save](./auto-save.md) — How generations are automatically saved
-- [History List](./history-list.md) — History page UI and actions
-- [View and Re-run](./view-and-rerun.md) — Viewing and re-running from history
+- [Auto-Save](./auto-save.md) - How generations are automatically saved
+- [History List](./history-list.md) - History page UI and actions
+- [View and Re-run](./view-and-rerun.md) - Viewing and re-running from history

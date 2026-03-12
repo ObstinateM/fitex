@@ -7,7 +7,7 @@ Estimates a market salary range and recommended ask for the job, based on the jo
 ## How It Works
 
 - Runs during generation Step 3, in parallel with question answering
-- Non-critical — failures silently ignored (feature gracefully degrades)
+- Non-critical - failures silently ignored (feature gracefully degrades)
 - Uses non-streaming `chatCompletion`
 - Analyzes job description + candidate's ORIGINAL CV template (not tailored)
 - Shows on Results page via SalaryCard component
@@ -15,5 +15,5 @@ Estimates a market salary range and recommended ask for the job, based on the jo
 
 ## Sub-features
 
-- [Salary Estimate Prompt](./salary-estimate-prompt.md) — Exact AI prompt
-- [Salary Card UI](./salary-card-ui.md) — Display component
+- [Salary Estimate Prompt](./salary-estimate-prompt.md) - Exact AI prompt
+- [Salary Card UI](./salary-card-ui.md) - Display component

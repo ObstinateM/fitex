@@ -21,7 +21,7 @@ Body:
 
 1. Read response body as a `ReadableStream` via `res.body.getReader()`
 2. Decode chunks with `TextDecoder` (streaming mode)
-3. Buffer incomplete lines — split by `\n`, keep last (potentially incomplete) line in buffer
+3. Buffer incomplete lines - split by `\n`, keep last (potentially incomplete) line in buffer
 4. For each complete line:
    - Skip empty lines or lines not starting with `data: `
    - Strip `data: ` prefix (6 characters)

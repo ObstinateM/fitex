@@ -7,7 +7,7 @@ A real-time, debounced keyword scan that runs automatically as the user selects 
 ## Trigger
 
 - Fires when `elements` state changes (useEffect dependency)
-- **2-second debounce** via `setTimeout` — resets on each change
+- **2-second debounce** via `setTimeout` - resets on each change
 - Only runs when at least one `"job-description"` element exists
 - Clears scan result and loading state if no job description elements
 
@@ -44,7 +44,7 @@ Key details:
 
 - **Model**: Always `gpt-4.1-nano` (cheapest model, regardless of user's selected model)
 - **Method**: Non-streaming `chatCompletion`
-- **Prompt**: `buildKeywordScanPrompt(jobDescription, template.mainContent)` — scans the ORIGINAL template
+- **Prompt**: `buildKeywordScanPrompt(jobDescription, template.mainContent)` - scans the ORIGINAL template
 
 ## Response Parsing
 
@@ -61,7 +61,7 @@ if (Array.isArray(parsed)) {
 
 ## Error Handling
 
-- Entirely non-critical — all errors silently caught
+- Entirely non-critical - all errors silently caught
 - Loading state managed independently of generation
 
 ## UI Component: PreScanCard

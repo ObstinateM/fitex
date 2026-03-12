@@ -24,7 +24,7 @@ Optional profile photo upload. The image is stored as a base64-encoded `AuxFile`
 ## Processing
 
 1. `FileReader.readAsDataURL(file)` reads the file
-2. The `data:mime;base64,` prefix is stripped — only the base64 payload is kept
+2. The `data:mime;base64,` prefix is stripped - only the base64 payload is kept
 3. Stored as an `AuxFile`:
 
 ```typescript

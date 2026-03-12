@@ -51,7 +51,7 @@ These extensions are treated as binary and stored as base64:
 - Scans all `.tex` files for `\documentclass`
 - **First** `.tex` with `\documentclass` becomes `mainContent`
 - Additional `.tex` files with `\documentclass` are added to `auxFiles` with a warning:
-  `"Found {count} .tex files with \documentclass — using the first one."`
+  `"Found {count} .tex files with \documentclass - using the first one."`
 - `.tex` files without `\documentclass` → `auxFiles`
 
 ### File Storage

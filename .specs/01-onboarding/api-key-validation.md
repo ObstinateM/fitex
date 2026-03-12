@@ -7,7 +7,7 @@ The first step of onboarding. The user enters their OpenAI API key, which is val
 ## UI
 
 - **Password input** field (`type="password"`) with placeholder `sk-...`
-- **"Validate Key" button** — disabled when input is empty or validation is in progress
+- **"Validate Key" button** - disabled when input is empty or validation is in progress
 - **Error text** shown below the input on failure
 - **Enter key** triggers validation via `onKeyDown` handler:
   ```typescript

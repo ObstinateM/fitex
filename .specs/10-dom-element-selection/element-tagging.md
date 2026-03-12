@@ -48,7 +48,7 @@ Each element has a textarea for optional guidance text, rendered inside the `Ele
 ## Element Item UI
 
 Each selected element card shows:
-1. **Tag selector** (dropdown): "Job Description" / "Question" — colored badge
+1. **Tag selector** (dropdown): "Job Description" / "Question" - colored badge
 2. **Text preview**: truncated to 120 characters
 3. **Remove button** (X icon): removes from list + sends `DESELECT_ELEMENT` to content script
 4. **Guidance textarea** (2 rows): optional per-element notes

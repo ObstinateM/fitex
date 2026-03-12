@@ -10,13 +10,17 @@ export function Footer() {
         </div>
 
         <nav className="flex items-center gap-8">
-          {['Features', 'Pricing', 'Docs', 'GitHub'].map((link) => (
+          {[
+            { label: 'Terms of Use', href: '/cgu' },
+            { label: 'Terms of Sale', href: '/cgv' },
+            { label: 'Privacy Policy', href: '/privacy' },
+          ].map(({ label, href }) => (
             <a
-              key={link}
-              href="#"
-              className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors duration-300 tracking-wide"
+              key={label}
+              href={href}
+              className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors duration-300 tracking-wide cursor-pointer"
             >
-              {link}
+              {label}
             </a>
           ))}
         </nav>

@@ -41,7 +41,7 @@ preScanCost = (preScanInput / 1,000,000) × nanoPricing.input
             + (preScanOutput / 1,000,000) × nanoPricing.output
 ```
 
-**Design rationale for hardcoding `gpt-4.1-nano`**: The pre-generation scan fires automatically and repeatedly — debounced on every job description element change. Because it runs in the background without explicit user intent, using the user's selected model (which may be `gpt-5.2` or `gpt-4.1`) would silently rack up costs. `gpt-4.1-nano` is the cheapest available model and is fully capable of keyword extraction, so it is hardcoded for this non-critical background task. The user's model choice only affects the main generation calls (CV tailoring, question answering, salary, keyword scans post-generation).
+**Design rationale for hardcoding `gpt-4.1-nano`**: The pre-generation scan fires automatically and repeatedly - debounced on every job description element change. Because it runs in the background without explicit user intent, using the user's selected model (which may be `gpt-5.2` or `gpt-4.1`) would silently rack up costs. `gpt-4.1-nano` is the cheapest available model and is fully capable of keyword extraction, so it is hardcoded for this non-critical background task. The user's model choice only affects the main generation calls (CV tailoring, question answering, salary, keyword scans post-generation).
 
 ### Total
 ```

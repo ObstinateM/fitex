@@ -236,7 +236,7 @@ Status messages throughout the app follow a consistent auto-clear pattern using 
 | Generation pipeline error (Selector.tsx) | 5 seconds | `"Error: {message}"` |
 | Reduce-to-one-page result (Results.tsx) | 2-3 seconds | `"Already 1 page!"` or failure messages |
 | Refinement failure (Results.tsx) | 3-5 seconds | `"Missing API key or template."` or error messages |
-| Recompilation failure (Results.tsx) | 3 seconds | `"Recompilation failed — kept previous version."` |
+| Recompilation failure (Results.tsx) | 3 seconds | `"Recompilation failed - kept previous version."` |
 
 ### Implementation Pattern
 

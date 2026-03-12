@@ -24,8 +24,8 @@ Blue-themed card displayed in the Selector page during the confirmation step.
 - Story title only (no reason)
 
 ### Action Buttons
-- **"Confirm & Generate"** (blue) — proceeds with checked story IDs
-- **"Cancel"** — aborts generation entirely
+- **"Confirm & Generate"** (blue) - proceeds with checked story IDs
+- **"Cancel"** - aborts generation entirely
 
 ## Promise-Based Flow
 
@@ -39,7 +39,7 @@ const confirmedIds = await new Promise<string[] | null>((resolve) => {
 setStoryConfirmation(null);
 
 if (confirmedIds === null) {
-  // User cancelled — abort generation
+  // User cancelled - abort generation
   return;
 }
 

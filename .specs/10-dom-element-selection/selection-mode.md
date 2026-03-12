@@ -93,7 +93,7 @@ function extractText(el: HTMLElement): string {
 ## Click Behavior
 
 **click** (capture phase):
-1. `preventDefault()` + `stopPropagation()` — prevents navigation
+1. `preventDefault()` + `stopPropagation()` - prevents navigation
 2. Find best element
 3. Remove hover class
 

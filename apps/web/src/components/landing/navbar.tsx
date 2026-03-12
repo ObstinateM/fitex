@@ -19,13 +19,17 @@ export function Navbar() {
         </div>
 
         <nav className="hidden md:flex items-center gap-8">
-          {['Features', 'How it works', 'Pricing'].map((link) => (
+          {[
+            { label: 'Features', href: '#features' },
+            { label: 'How it works', href: '#how-it-works' },
+            { label: 'Pricing', href: '#pricing' },
+          ].map(({ label, href }) => (
             <a
-              key={link}
-              href="#"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+              key={label}
+              href={href}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
             >
-              {link}
+              {label}
             </a>
           ))}
         </nav>

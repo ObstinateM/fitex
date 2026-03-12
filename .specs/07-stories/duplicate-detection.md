@@ -2,7 +2,7 @@
 
 ## Overview
 
-During bulk import, parsed stories are compared against existing stories to warn about potential duplicates. Warnings are displayed but don't prevent import — the user decides.
+During bulk import, parsed stories are compared against existing stories to warn about potential duplicates. Warnings are displayed but don't prevent import - the user decides.
 
 ## Algorithm (`findSimilarStories`)
 
