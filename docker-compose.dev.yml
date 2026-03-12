@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fitex
+      POSTGRES_PASSWORD: fitex_dev
+      POSTGRES_DB: fitex
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fitex"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: deps
+    command: pnpm --filter @fitex/api start:dev
+    working_dir: /app
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgresql://fitex:fitex_dev@db:5432/fitex
+      NODE_ENV: development
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: deps
+    command: pnpm --filter @fitex/web dev
+    working_dir: /app
+    volumes:
+      - ./apps/web/src:/app/apps/web/src
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NODE_ENV: development
+    depends_on:
+      - api
+
+volumes:
+  pgdata_dev:
