@@ -39,9 +39,9 @@ export function Hero() {
           >
             <Badge
               variant="outline"
-              className="border-violet/30 bg-violet/5 px-4 py-1.5 text-xs tracking-widest uppercase text-violet-light font-mono"
+              className="border-emerald/30 bg-emerald/5 px-4 py-1.5 text-xs tracking-widest uppercase text-emerald font-mono"
             >
-              LaTeX-powered CV tailoring
+              No credit card required
             </Badge>
           </motion.div>
 
@@ -50,11 +50,11 @@ export function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
-            className="text-5xl sm:text-7xl lg:text-8xl font-serif leading-[0.95]"
+            className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold tracking-tight leading-[1.1]"
           >
-            Make your CV
+            Land more interviews.
             <br />
-            <span className="text-gradient">fit the job.</span>
+            <span className="text-gradient">Stop getting ghosted.</span>
           </motion.h1>
 
           {/* Subheadline */}
@@ -64,8 +64,9 @@ export function Hero() {
             transition={{ duration: 0.7, delay: 0.5 }}
             className="max-w-xl text-lg text-muted-foreground leading-relaxed"
           >
-            Paste a job description. Fitex rewrites your LaTeX CV to match,
-            analyzes ATS keywords, and compiles a pixel-perfect PDF &mdash; in seconds.
+            75% of CVs are rejected by ATS before a human ever reads them.
+            Fitex rewrites your CV to match any job description, optimizes for ATS keywords,
+            and delivers a ready-to-send PDF &mdash; in 15 seconds.
           </motion.p>
 
           {/* CTA */}
@@ -79,26 +80,42 @@ export function Hero() {
               size="lg"
               className="bg-violet hover:bg-violet-dark text-white px-8 py-6 text-base font-medium glow-violet transition-all duration-300 hover:scale-[1.02]"
             >
-              Get started free
+              Try free &mdash; no credit card
             </Button>
             <Button
               variant="outline"
               size="lg"
-              className="border-border/50 hover:border-violet/40 px-8 py-6 text-base text-muted-foreground hover:text-foreground transition-all duration-300"
+              className="border-border/60 hover:border-violet/40 px-8 py-6 text-base text-foreground/80 hover:text-foreground transition-all duration-300"
             >
               Install extension
             </Button>
           </motion.div>
 
           {/* Proof */}
-          <motion.p
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.9 }}
-            className="text-xs font-mono text-muted-foreground/60 tracking-wide mt-2"
+            className="flex flex-col items-center gap-2 mt-4"
           >
-            No credit card required &middot; Works with any LaTeX template
-          </motion.p>
+            <div className="flex items-center gap-6 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald" />
+                15s generation
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald" />
+                94% ATS match rate
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald" />
+                4x more callbacks
+              </span>
+            </div>
+            <p className="text-xs font-mono text-muted-foreground/70 tracking-wide">
+              Free forever &middot; No credit card required &middot; Works with any CV template
+            </p>
+          </motion.div>
         </motion.div>
 
         {/* Floating CV mockup */}
@@ -118,7 +135,7 @@ export function Hero() {
                   <div className="h-3 w-3 rounded-full bg-green-500/60" />
                 </div>
                 <div className="flex-1 flex justify-center">
-                  <div className="bg-surface/60 rounded-md px-4 py-1 text-xs font-mono text-muted-foreground/60">
+                  <div className="bg-surface/60 rounded-md px-4 py-1 text-xs font-mono text-muted-foreground/80">
                     app.fitex.dev
                   </div>
                 </div>

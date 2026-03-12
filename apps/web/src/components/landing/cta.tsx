@@ -19,29 +19,47 @@ export function CTA() {
           {/* Glow */}
           <div className="absolute inset-0 -z-10 rounded-3xl bg-violet/5 blur-3xl" />
 
-          <div className="rounded-2xl border border-border/30 bg-card/30 backdrop-blur-sm p-12 md:p-16 space-y-8">
-            <h2 className="text-4xl sm:text-5xl font-serif tracking-tight">
-              Stop rewriting your CV<br />
-              <span className="text-gradient italic">manually.</span>
+          <div className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm p-12 md:p-16 space-y-8">
+            <h2 className="text-4xl sm:text-5xl font-display font-bold tracking-tight">
+              Every hour you spend rewriting your CV<br />
+              <span className="text-gradient">is an hour you could be interviewing.</span>
             </h2>
 
             <p className="text-muted-foreground max-w-md mx-auto leading-relaxed">
-              Join thousands of job seekers who land more interviews with
-              AI-tailored, ATS-optimized LaTeX CVs.
+              Start applying smarter today. Get your first tailored CV in under 15 seconds.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col items-center gap-6">
               <Button
                 size="lg"
                 className="bg-violet hover:bg-violet-dark text-white px-10 py-6 text-base font-medium glow-violet transition-all duration-300 hover:scale-[1.02]"
               >
-                Start for free
+                Get started free &mdash; no credit card
               </Button>
-            </div>
 
-            <p className="text-[11px] font-mono text-muted-foreground/40 tracking-wide">
-              Free tier includes 10 generations per month
-            </p>
+              {/* Lead magnet */}
+              <div className="w-full max-w-md">
+                <p className="text-xs text-muted-foreground/80 mb-3">
+                  Not ready yet? Get our free guide:
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="your@email.com"
+                    className="flex-1 rounded-lg border border-border/50 bg-surface/40 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-violet/40 transition-colors"
+                  />
+                  <Button
+                    variant="outline"
+                    className="border-violet/30 text-violet-light hover:bg-violet/10 px-5 shrink-0"
+                  >
+                    Send guide
+                  </Button>
+                </div>
+                <p className="text-[10px] font-mono text-muted-foreground/60 mt-2 tracking-wide">
+                  &ldquo;7 CV mistakes that get you auto-rejected by ATS&rdquo; &mdash; free PDF
+                </p>
+              </div>
+            </div>
           </div>
         </motion.div>
       </div>

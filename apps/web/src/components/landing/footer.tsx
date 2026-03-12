@@ -14,14 +14,14 @@ export function Footer() {
             <a
               key={link}
               href="#"
-              className="text-xs font-mono text-muted-foreground/60 hover:text-foreground transition-colors duration-300 tracking-wide"
+              className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors duration-300 tracking-wide"
             >
               {link}
             </a>
           ))}
         </nav>
 
-        <p className="text-[11px] font-mono text-muted-foreground/40 tracking-wide">
+        <p className="text-[11px] font-mono text-muted-foreground/70 tracking-wide">
           &copy; {new Date().getFullYear()} Fitex
         </p>
       </div>
