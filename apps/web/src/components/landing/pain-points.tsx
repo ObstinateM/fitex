@@ -37,8 +37,8 @@ export function PainPoints() {
       <div className="mx-auto max-w-6xl">
         {/* Stats */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
           viewport={{ once: true, margin: '-100px' }}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
@@ -55,8 +55,8 @@ export function PainPoints() {
           {stats.map((stat, i) => (
             <motion.div
               key={stat.value}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
               viewport={{ once: true, margin: '-50px' }}
               transition={{ duration: 0.5, delay: i * 0.1 }}
               className="text-center rounded-xl border border-border/40 bg-card/30 p-6 hover:border-violet/20 transition-all duration-500"
@@ -72,8 +72,8 @@ export function PainPoints() {
           {painPoints.map((point, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
               viewport={{ once: true, margin: '-50px' }}
               transition={{ duration: 0.5, delay: i * 0.08 }}
               className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl border border-border/40 bg-card/30 p-5 hover:border-violet/20 transition-all duration-500"

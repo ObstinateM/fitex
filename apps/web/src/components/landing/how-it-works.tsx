@@ -52,10 +52,10 @@ export function HowItWorks() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, margin: '-50px' }}
               transition={{ duration: 0.5, delay: i * 0.12 }}
-              className="group relative grid grid-cols-[auto_1fr_1fr] gap-8 items-center rounded-xl border border-border/40 bg-card/30 p-6 hover:border-violet/20 hover:bg-card/40 transition-all duration-500"
+              className="group relative grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_1fr] gap-4 sm:gap-8 items-start sm:items-center rounded-xl border border-border/40 bg-card/30 p-5 sm:p-6 hover:border-violet/20 hover:bg-card/40 transition-all duration-500"
             >
               {/* Number */}
-              <span className="text-5xl font-display font-bold text-violet/20 group-hover:text-violet/40 transition-colors duration-500 select-none w-16 text-center">
+              <span className="text-4xl sm:text-5xl font-display font-bold text-violet/20 group-hover:text-violet/40 transition-colors duration-500 select-none w-12 sm:w-16 text-center row-span-2 sm:row-span-1">
                 {step.number}
               </span>
 
@@ -66,7 +66,7 @@ export function HowItWorks() {
               </div>
 
               {/* Code snippet */}
-              <div className="flex justify-end">
+              <div className="flex sm:justify-end col-start-2">
                 <code className="text-xs font-mono text-muted-foreground/80 bg-surface/40 rounded-md px-3 py-2 border border-border/30 group-hover:text-violet-light/80 group-hover:border-violet/20 transition-all duration-500">
                   {step.code}
                 </code>
