@@ -1,7 +1,7 @@
 'use client';
 
-import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
+import { motion } from 'motion/react';
 import { FitexLogo } from './logo';
 
 export function Navbar() {
@@ -14,7 +14,7 @@ export function Navbar() {
     >
       <div className="mx-auto max-w-6xl flex items-center justify-between px-6 py-3">
         <div className="flex items-center gap-2.5">
-          <FitexLogo className="h-8 w-8" />
+          <FitexLogo className="h-16 w-16 -m-2" />
           <span className="text-lg font-semibold tracking-tight">Fitex</span>
         </div>
 

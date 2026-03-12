@@ -551,8 +551,8 @@ export function Hero() {
                     exit={{ opacity: 0 }}
                     transition={{
                       opacity: { duration: 0.3 },
-                      left: { duration: clicking ? 0 : 0.8, ease: [0.22, 1, 0.36, 1] },
-                      top: { duration: clicking ? 0 : 0.8, ease: [0.22, 1, 0.36, 1] },
+                      left: { duration: clicking ? 0 : 1.5, ease: [0.22, 1, 0.36, 1] },
+                      top: { duration: clicking ? 0 : 1.5, ease: [0.22, 1, 0.36, 1] },
                     }}
                     className="absolute z-20 pointer-events-none"
                     style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
