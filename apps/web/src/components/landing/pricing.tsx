@@ -1,10 +1,8 @@
-'use client';
-
-import { motion } from 'motion/react';
 import { Check, Zap, Target, Sparkles, Infinity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { AnimateIn } from './animate-in';
 
 const plans = [
   {
@@ -90,13 +88,7 @@ export function Pricing() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 h-px w-2/3 bg-gradient-to-r from-transparent via-border/60 to-transparent" />
 
       <div className="mx-auto max-w-6xl">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-100px' }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
-        >
+        <AnimateIn className="text-center mb-16">
           <span className="text-xs font-mono tracking-[0.3em] uppercase text-violet-light/80 block mb-4">
             Pricing
           </span>
@@ -107,20 +99,13 @@ export function Pricing() {
           <p className="text-muted-foreground mt-4 max-w-lg mx-auto">
             Start with 3 free tailored CVs. Buy more when you need them — credits never expire.
           </p>
-        </motion.div>
+        </AnimateIn>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
           {plans.map((plan, i) => {
             const Icon = plan.icon;
             return (
-              <motion.div
-                key={plan.name}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-50px' }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="flex"
-              >
+              <AnimateIn key={plan.name} delay={i * 100} className="flex">
                 <Card
                   className={`flex flex-col w-full border-border/40 bg-card/50 backdrop-blur-sm transition-all duration-500 ${
                     plan.highlighted
@@ -200,20 +185,14 @@ export function Pricing() {
                     </p>
                   </CardContent>
                 </Card>
-              </motion.div>
+              </AnimateIn>
             );
           })}
         </div>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          className="text-center text-sm text-muted-foreground/60 mt-8"
-        >
+        <AnimateIn delay={500} className="text-center text-sm text-muted-foreground/60 mt-8">
           1 credit = 1 tailored CV with ATS analysis, Q&A answers, and salary estimate included.
-        </motion.p>
+        </AnimateIn>
       </div>
     </section>
   );

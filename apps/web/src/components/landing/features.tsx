@@ -1,7 +1,5 @@
-'use client';
-
-import { motion } from 'motion/react';
 import { Card, CardContent } from '@/components/ui/card';
+import { AnimateIn } from './animate-in';
 
 const features = [
   {
@@ -73,13 +71,7 @@ export function Features() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 h-px w-2/3 bg-gradient-to-r from-transparent via-border/60 to-transparent" />
 
       <div className="mx-auto max-w-6xl">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-100px' }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-20"
-        >
+        <AnimateIn className="text-center mb-20">
           <span className="text-xs font-mono tracking-[0.3em] uppercase text-violet-light/80 block mb-4">
             Features
           </span>
@@ -89,17 +81,11 @@ export function Features() {
           <p className="mt-4 text-muted-foreground max-w-2xl mx-auto text-lg">
             Automatically match your resume to any job description, beat applicant tracking systems, and apply faster — all from one tool.
           </p>
-        </motion.div>
+        </AnimateIn>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {features.map((feature, i) => (
-            <motion.div
-              key={feature.title}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-50px' }}
-              transition={{ duration: 0.5, delay: i * 0.08 }}
-            >
+            <AnimateIn key={feature.title} delay={i * 80}>
               <article>
                 <Card className="group border-border/40 bg-card/50 backdrop-blur-sm hover:border-violet/30 transition-all duration-500 hover:bg-card/70 h-full">
                   <CardContent className="p-6 space-y-4">
@@ -119,7 +105,7 @@ export function Features() {
                   </CardContent>
                 </Card>
               </article>
-            </motion.div>
+            </AnimateIn>
           ))}
         </div>
       </div>

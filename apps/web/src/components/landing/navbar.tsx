@@ -1,17 +1,11 @@
-'use client';
-
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { motion } from 'motion/react';
 import { FitexLogo } from './logo';
 
 export function Navbar() {
   return (
-    <motion.header
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.1 }}
-      className="fixed top-0 left-0 right-0 z-50 border-b border-border/30 bg-background/70 backdrop-blur-xl"
+    <header
+      className="fixed top-0 left-0 right-0 z-50 border-b border-border/30 bg-background/70 backdrop-blur-xl animate-navbar-enter"
     >
       <div className="mx-auto max-w-6xl flex items-center justify-between px-6 py-3">
         <Link href="/" className="flex items-center gap-2.5" aria-label="Fitex home">
@@ -51,6 +45,6 @@ export function Navbar() {
           </Button>
         </div>
       </div>
-    </motion.header>
+    </header>
   );
 }

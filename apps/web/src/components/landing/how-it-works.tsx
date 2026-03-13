@@ -1,6 +1,4 @@
-'use client';
-
-import { motion } from 'motion/react';
+import { AnimateIn } from './animate-in';
 
 const steps = [
   {
@@ -29,29 +27,20 @@ export function HowItWorks() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 h-px w-2/3 bg-gradient-to-r from-transparent via-border/60 to-transparent" />
 
       <div className="mx-auto max-w-5xl">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-100px' }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-20"
-        >
+        <AnimateIn className="text-center mb-20">
           <span className="text-xs font-mono tracking-[0.3em] uppercase text-emerald/80 block mb-4">
             How it works
           </span>
           <h2 id="how-it-works-heading" className="text-4xl sm:text-5xl font-display font-bold tracking-tight">
             From job post to tailored CV in <span className="text-gradient">15 seconds</span>
           </h2>
-        </motion.div>
+        </AnimateIn>
 
         <div className="space-y-2">
           {steps.map((step, i) => (
-            <motion.div
+            <AnimateIn
               key={step.number}
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: '-50px' }}
-              transition={{ duration: 0.5, delay: i * 0.12 }}
+              delay={i * 120}
               className="group relative grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_1fr] gap-4 sm:gap-8 items-start sm:items-center rounded-xl border border-border/40 bg-card/30 p-5 sm:p-6 hover:border-violet/20 hover:bg-card/40 transition-all duration-500"
             >
               {/* Number */}
@@ -71,7 +60,7 @@ export function HowItWorks() {
                   {step.code}
                 </code>
               </div>
-            </motion.div>
+            </AnimateIn>
           ))}
         </div>
       </div>

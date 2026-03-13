@@ -1,7 +1,5 @@
-'use client';
-
-import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
+import { AnimateIn } from './animate-in';
 
 export function CTA() {
   return (
@@ -9,13 +7,7 @@ export function CTA() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 h-px w-2/3 bg-gradient-to-r from-transparent via-border/60 to-transparent" />
 
       <div className="mx-auto max-w-3xl text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.7 }}
-          className="relative"
-        >
+        <AnimateIn className="relative">
           {/* Glow */}
           <div className="absolute inset-0 -z-10 rounded-3xl bg-violet/5 blur-3xl" />
 
@@ -64,7 +56,7 @@ export function CTA() {
               </div>
             </div>
           </div>
-        </motion.div>
+        </AnimateIn>
       </div>
     </section>
   );

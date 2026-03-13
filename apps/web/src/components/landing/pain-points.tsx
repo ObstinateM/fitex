@@ -1,7 +1,5 @@
-'use client';
-
-import { motion } from 'motion/react';
 import { Check, X } from 'lucide-react';
+import { AnimateIn } from './animate-in';
 
 const stats = [
   { value: '75%', label: 'of CVs are rejected by ATS before a human reads them' },
@@ -36,46 +34,34 @@ export function PainPoints() {
 
       <div className="mx-auto max-w-6xl">
         {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true, margin: '-100px' }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
-        >
+        <AnimateIn className="text-center mb-16">
           <span className="text-xs font-mono tracking-[0.3em] uppercase text-violet-light/80 block mb-4">
             The numbers
           </span>
           <h2 id="pain-points-heading" className="text-4xl sm:text-5xl font-display font-bold tracking-tight">
             Your CV deserves to be <span className="text-gradient">actually read</span>
           </h2>
-        </motion.div>
+        </AnimateIn>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-20">
           {stats.map((stat, i) => (
-            <motion.div
+            <AnimateIn
               key={stat.value}
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true, margin: '-50px' }}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
+              delay={i * 100}
               className="text-center rounded-xl border border-border/40 bg-card/30 p-6 hover:border-violet/20 transition-all duration-500"
             >
               <div className="text-4xl sm:text-5xl font-display font-bold text-gradient mb-2">{stat.value}</div>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{stat.label}</p>
-            </motion.div>
+            </AnimateIn>
           ))}
         </div>
 
         {/* Pain points */}
         <div className="space-y-3">
           {painPoints.map((point, i) => (
-            <motion.div
+            <AnimateIn
               key={i}
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true, margin: '-50px' }}
-              transition={{ duration: 0.5, delay: i * 0.08 }}
+              delay={i * 80}
               className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl border border-border/40 bg-card/30 p-5 hover:border-violet/20 transition-all duration-500"
             >
               <div className="flex items-start gap-3">
@@ -86,7 +72,7 @@ export function PainPoints() {
                 <Check className="mt-0.5 text-emerald size-4 shrink-0" />
                 <p className="text-sm text-foreground/90">{point.solution}</p>
               </div>
-            </motion.div>
+            </AnimateIn>
           ))}
         </div>
       </div>

@@ -72,8 +72,8 @@ export const metadata: Metadata = {
     images: ['/fitex.png'],
   },
   icons: {
-    icon: '/logo.svg',
-    apple: '/logo.svg',
+    icon: '/favicon.ico',
+    apple: '/favicon.ico',
   },
   robots: {
     index: true,

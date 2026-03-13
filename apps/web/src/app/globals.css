@@ -165,3 +165,31 @@
 .glow-violet {
   box-shadow: 0 0 60px -12px rgba(124, 58, 237, 0.4);
 }
+
+/* Server-friendly scroll animations */
+.animate-in-hidden {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.animate-in-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Navbar entrance */
+@keyframes navbar-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-navbar-enter {
+  animation: navbar-enter 0.5s ease-out 0.1s both;
+}
