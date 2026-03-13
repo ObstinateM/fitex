@@ -304,7 +304,7 @@ export function Hero() {
       {/* Background gradient orbs */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-[40%] -left-[20%] h-[80vh] w-[80vh] rounded-full bg-violet/10 blur-[120px] animate-pulse-glow" />
-        <div className="absolute -bottom-[30%] -right-[15%] h-[60vh] w-[60vh] rounded-full bg-emerald/8 blur-[100px] animate-pulse-glow" />
+
         <div className="absolute top-[20%] right-[10%] h-[40vh] w-[40vh] rounded-full bg-violet-light/5 blur-[80px]" />
       </div>
 
@@ -407,7 +407,9 @@ export function Hero() {
           className="relative mt-12 sm:mt-20 mx-auto max-w-5xl"
         >
           <div className="overflow-hidden">
-          <div className="relative rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm p-1 glow-violet origin-top left-1/2 -translate-x-1/2 scale-[0.34] mb-[-290px] sm:scale-[0.55] sm:mb-[-200px] md:scale-[0.75] md:mb-[-110px] lg:scale-100 lg:mb-0 min-w-[900px]">
+          {/* Emerald glow behind mockup */}
+          <div className="absolute inset-0 -m-6 rounded-2xl bg-emerald/8 blur-[60px]" />
+          <div className="relative rounded-xl border border-border/40 bg-card backdrop-blur-sm p-1 glow-violet origin-top left-1/2 -translate-x-1/2 scale-[0.34] mb-[-290px] sm:scale-[0.55] sm:mb-[-200px] md:scale-[0.75] md:mb-[-110px] lg:scale-100 lg:mb-0 min-w-[900px]">
             <div className="relative rounded-lg bg-surface-raised overflow-hidden">
               {/* Browser chrome */}
               <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30">
@@ -424,7 +426,7 @@ export function Hero() {
               </div>
 
               {/* Page + Sidebar layout */}
-              <div className="flex min-h-[400px]">
+              <div className="flex h-[400px]">
                 {/* Job listing page */}
                 <div className="flex-1 p-6 space-y-4">
                   <div className="space-y-1.5">
@@ -477,7 +479,7 @@ export function Hero() {
                 </div>
 
                 {/* Fitex sidebar */}
-                <div className="w-[260px] border-l border-border/30 bg-surface/40 flex flex-col">
+                <div className="w-[260px] border-l border-border/30 bg-surface/40 flex flex-col overflow-hidden">
                   {/* Sidebar header */}
                   <div className="flex items-center justify-between px-4 py-3 border-b border-border/20">
                     <div className="flex items-center gap-2">

@@ -9,7 +9,7 @@ export function Navbar() {
     >
       <div className="mx-auto max-w-6xl flex items-center justify-between px-6 py-3">
         <Link href="/" className="flex items-center gap-2.5" aria-label="Fitex home">
-          <FitexLogo className="h-16 w-16 -m-2" />
+          <FitexLogo className="h-9 w-9" />
           <span className="text-lg font-semibold tracking-tight">Fitex</span>
         </Link>
 

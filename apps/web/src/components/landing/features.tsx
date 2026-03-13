@@ -85,8 +85,8 @@ export function Features() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {features.map((feature, i) => (
-            <AnimateIn key={feature.title} delay={i * 80}>
-              <article>
+            <AnimateIn key={feature.title} delay={i * 80} className="h-full">
+              <article className="h-full">
                 <Card className="group border-border/40 bg-card/50 backdrop-blur-sm hover:border-violet/30 transition-all duration-500 hover:bg-card/70 h-full">
                   <CardContent className="p-6 space-y-4">
                     <div
