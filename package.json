@@ -15,6 +15,7 @@
     "format:fix": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "test": "pnpm -r test",
     "docker:dev": "docker compose -f docker-compose.dev.yml up --build",
+    "docker:dev:stop": "docker compose -f docker-compose.dev.yml down",
     "docker:prod": "docker compose -f docker-compose.prod.yml up --build -d"
   },
   "engines": {

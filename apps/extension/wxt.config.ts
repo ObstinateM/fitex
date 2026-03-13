@@ -6,5 +6,6 @@ export default defineConfig({
     name: 'Fitex',
     description: 'Make your LaTeX CV fit any job description',
     permissions: ['activeTab', 'storage', 'sidePanel'],
+    host_permissions: ['http://localhost:4000/*'],
   },
 });

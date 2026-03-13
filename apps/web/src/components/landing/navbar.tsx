@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { FitexLogo } from './logo';
 
 export function Navbar() {
@@ -30,19 +29,18 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-sm text-muted-foreground hover:text-foreground"
+          <Link
+            href="/login"
+            className="inline-flex items-center justify-center rounded-lg text-sm font-medium h-7 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
           >
             Log in
-          </Button>
-          <Button
-            size="sm"
-            className="bg-violet hover:bg-violet-dark text-white text-sm px-4"
+          </Link>
+          <Link
+            href="/signup"
+            className="inline-flex items-center justify-center rounded-lg text-sm font-medium h-7 px-4 bg-violet hover:bg-violet-dark text-white transition-all"
           >
             Try for free
-          </Button>
+          </Link>
         </div>
       </div>
     </header>

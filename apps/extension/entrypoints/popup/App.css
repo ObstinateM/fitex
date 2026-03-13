@@ -1,42 +1,142 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+.popup {
+  width: 320px;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0f0d1a;
+  color: #f0eef5;
+}
+
+.header {
   text-align: center;
+  margin-bottom: 16px;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #54bc4ae0);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 4px;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.subtitle {
+  color: #9b96b0;
+  font-size: 13px;
+  margin: 0;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.user-info {
+  font-weight: 600;
+  margin: 4px 0 0;
 }
 
-.card {
-  padding: 2em;
+.user-email {
+  color: #9b96b0;
+  font-size: 12px;
+  margin: 2px 0 0;
 }
 
-.read-the-docs {
-  color: #888;
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.placeholder {
+  text-align: center;
+  color: #9b96b0;
+  font-size: 13px;
+  padding: 16px 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.input {
+  padding: 8px 12px;
+  border: 1px solid #2e2952;
+  border-radius: 8px;
+  background: #1a1630;
+  color: #f0eef5;
+  font-size: 13px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: #7c3aed;
+}
+
+.input::placeholder {
+  color: #6b6580;
+}
+
+.error {
+  color: #ef4444;
+  font-size: 12px;
+  margin: 0;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+}
+
+.btn-primary {
+  background: #7c3aed;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #5b21b6;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid #2e2952;
+  color: #f0eef5;
+}
+
+.btn-outline:hover {
+  background: #1a1630;
+}
+
+.btn-google {
+  background: #1a1630;
+  border: 1px solid #2e2952;
+  color: #f0eef5;
+}
+
+.btn-google:hover {
+  background: #28234a;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 12px 0;
+  gap: 8px;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid #2e2952;
+}
+
+.divider span {
+  color: #6b6580;
+  font-size: 11px;
+  text-transform: uppercase;
 }
