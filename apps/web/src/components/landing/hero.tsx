@@ -300,7 +300,7 @@ export function Hero() {
   const sidebarMode = step <= 5 ? 'assistant' : step === 6 ? 'generating' : 'results';
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section id="hero" aria-labelledby="hero-heading" className="relative min-h-screen flex items-center justify-center overflow-x-clip">
       {/* Background gradient orbs */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-[40%] -left-[20%] h-[80vh] w-[80vh] rounded-full bg-violet/10 blur-[120px] animate-pulse-glow" />
@@ -317,7 +317,7 @@ export function Hero() {
         }}
       />
 
-      <div className="relative z-10 mx-auto max-w-6xl px-6 text-center">
+      <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 text-center w-full">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -329,7 +329,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="mt-28"
+            className="mt-24 sm:mt-28"
           >
             <Badge
               variant="outline"
@@ -341,10 +341,11 @@ export function Hero() {
 
           {/* Headline */}
           <motion.h1
+            id="hero-heading"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
-            className="text-5xl sm:text-7xl lg:text-8xl font-display font-bold tracking-tight leading-[1.1]"
+            className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-display font-bold tracking-tight leading-[1.1]"
           >
             Land more interviews.
             <br />
@@ -356,7 +357,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.5 }}
-            className="max-w-xl text-lg text-muted-foreground leading-relaxed"
+            className="max-w-xl w-full text-sm sm:text-base md:text-lg text-muted-foreground leading-relaxed"
           >
             75% of CVs are rejected by ATS before a human ever reads them.
             Fitex rewrites your CV to match any job description, optimizes for ATS keywords,
@@ -392,7 +393,7 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.9 }}
             className="flex flex-col items-center gap-2 mt-4"
           >
-            <p className="text-xs font-mono text-muted-foreground/70 tracking-wide">
+            <p className="text-[10px] sm:text-xs font-mono text-muted-foreground/70 tracking-wide text-center text-balance">
               4x more callbacks &middot; <span className="text-white">No credit card required</span> &middot; Works with any CV template
             </p>
           </motion.div>
@@ -403,9 +404,10 @@ export function Hero() {
           initial={{ opacity: 0, y: 60 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 1, ease: [0.22, 1, 0.36, 1] }}
-          className="relative mt-20 mx-auto max-w-5xl"
+          className="relative mt-12 sm:mt-20 mx-auto max-w-5xl"
         >
-          <div className="relative rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm p-1 glow-violet">
+          <div className="overflow-hidden">
+          <div className="relative rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm p-1 glow-violet origin-top left-1/2 -translate-x-1/2 scale-[0.34] mb-[-290px] sm:scale-[0.55] sm:mb-[-200px] md:scale-[0.75] md:mb-[-110px] lg:scale-100 lg:mb-0 min-w-[900px]">
             <div className="relative rounded-lg bg-surface-raised overflow-hidden">
               {/* Browser chrome */}
               <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30">
@@ -569,6 +571,7 @@ export function Hero() {
 
           {/* Reflection */}
           <div className="absolute -bottom-12 left-[10%] right-[10%] h-12 bg-gradient-to-b from-violet/5 to-transparent blur-xl rounded-full" />
+          </div>
         </motion.div>
       </div>
     </section>

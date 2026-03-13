@@ -25,7 +25,7 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="relative py-32 px-6">
+    <section id="how-it-works" aria-labelledby="how-it-works-heading" className="relative py-32 px-6">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 h-px w-2/3 bg-gradient-to-r from-transparent via-border/60 to-transparent" />
 
       <div className="mx-auto max-w-5xl">
@@ -39,7 +39,7 @@ export function HowItWorks() {
           <span className="text-xs font-mono tracking-[0.3em] uppercase text-emerald/80 block mb-4">
             How it works
           </span>
-          <h2 className="text-4xl sm:text-5xl font-display font-bold tracking-tight">
+          <h2 id="how-it-works-heading" className="text-4xl sm:text-5xl font-display font-bold tracking-tight">
             From job post to tailored CV in <span className="text-gradient">15 seconds</span>
           </h2>
         </motion.div>

@@ -31,7 +31,7 @@ const painPoints = [
 
 export function PainPoints() {
   return (
-    <section className="relative py-32 px-6">
+    <section aria-labelledby="pain-points-heading" className="relative py-32 px-6">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 h-px w-2/3 bg-gradient-to-r from-transparent via-border/60 to-transparent" />
 
       <div className="mx-auto max-w-6xl">
@@ -46,7 +46,7 @@ export function PainPoints() {
           <span className="text-xs font-mono tracking-[0.3em] uppercase text-violet-light/80 block mb-4">
             The numbers
           </span>
-          <h2 className="text-4xl sm:text-5xl font-display font-bold tracking-tight">
+          <h2 id="pain-points-heading" className="text-4xl sm:text-5xl font-display font-bold tracking-tight">
             Your CV deserves to be <span className="text-gradient">actually read</span>
           </h2>
         </motion.div>
