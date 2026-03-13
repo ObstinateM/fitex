@@ -1,7 +1,25 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { FitexLogo } from './logo';
 
-export function Navbar() {
+async function getIsLoggedIn(): Promise<boolean> {
+  try {
+    const cookieStore = await cookies();
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+    const res = await fetch(`${apiUrl}/api/auth/get-session`, {
+      headers: { cookie: cookieStore.toString() },
+      cache: 'no-store',
+    });
+    const session = await res.json();
+    return !!session?.user;
+  } catch {
+    return false;
+  }
+}
+
+export async function Navbar() {
+  const isLoggedIn = await getIsLoggedIn();
+
   return (
     <header
       className="fixed top-0 left-0 right-0 z-50 border-b border-border/30 bg-background/70 backdrop-blur-xl animate-navbar-enter"
@@ -29,18 +47,29 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center rounded-lg text-sm font-medium h-7 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/signup"
-            className="inline-flex items-center justify-center rounded-lg text-sm font-medium h-7 px-4 bg-violet hover:bg-violet-dark text-white transition-all"
-          >
-            Try for free
-          </Link>
+          {isLoggedIn ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center justify-center rounded-lg text-sm font-medium h-7 px-4 bg-violet hover:bg-violet-dark text-white transition-all"
+            >
+              Open app
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center rounded-lg text-sm font-medium h-7 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/signup"
+                className="inline-flex items-center justify-center rounded-lg text-sm font-medium h-7 px-4 bg-violet hover:bg-violet-dark text-white transition-all"
+              >
+                Try for free
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>

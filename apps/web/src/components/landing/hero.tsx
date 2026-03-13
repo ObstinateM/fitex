@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useSession } from '@/lib/auth-client';
+import { cn } from '@/lib/utils';
 
 // Animation steps:
 // 0: idle - sidebar shows "Select elements" button, cursor near it
@@ -281,6 +284,8 @@ function SidebarResults() {
 
 export function Hero() {
   const [step, setStep] = useState(0);
+  const { data: session } = useSession();
+  const isLoggedIn = !!session?.user;
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -371,19 +376,42 @@ export function Hero() {
             transition={{ duration: 0.6, delay: 0.7 }}
             className="flex flex-col sm:flex-row items-center gap-4 mt-4"
           >
-            <Button
-              size="lg"
-              className="bg-violet hover:bg-violet-dark text-white px-8 py-6 text-base font-medium glow-violet transition-all duration-300 hover:scale-[1.02]"
-            >
-              Try free &mdash; no credit card
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="border-border/60 hover:border-violet/40 px-8 py-6 text-base text-foreground/80 hover:text-foreground transition-all duration-300"
-            >
-              Install extension
-            </Button>
+            {isLoggedIn ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="group inline-flex items-center gap-2 rounded-lg text-sm font-medium bg-violet/10 hover:bg-violet/20 border border-violet/30 hover:border-violet/50 text-violet-light px-5 py-2.5 transition-all duration-200"
+                >
+                  Continue tailoring
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-200 group-hover:translate-x-0.5">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </Link>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="border-border/60 hover:border-violet/40 px-8 py-6 text-base text-foreground/80 hover:text-foreground transition-all duration-300"
+                >
+                  Install extension
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/signup"
+                  className="inline-flex items-center justify-center rounded-lg text-base font-medium bg-violet hover:bg-violet-dark text-white px-8 py-6 glow-violet transition-all duration-300 hover:scale-[1.02]"
+                >
+                  Try free &mdash; no credit card
+                </Link>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="border-border/60 hover:border-violet/40 px-8 py-6 text-base text-foreground/80 hover:text-foreground transition-all duration-300"
+                >
+                  Install extension
+                </Button>
+              </>
+            )}
           </motion.div>
 
           {/* Proof */}
