@@ -8,6 +8,13 @@
       "when": 1773447915358,
       "tag": "0000_absent_hemingway",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773724800000,
+      "tag": "0001_add_story_table",
+      "breakpoints": true
     }
   ]
 }

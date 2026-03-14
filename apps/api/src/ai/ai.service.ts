@@ -29,6 +29,107 @@ export class AIService {
     }
   }
 
+  async chatCompletion(
+    systemPrompt: string,
+    userMessage: string,
+  ): Promise<string> {
+    switch (this.provider) {
+      case 'anthropic':
+        return this.chatAnthropic(systemPrompt, userMessage);
+      case 'openai':
+        return this.chatOpenAI(systemPrompt, userMessage);
+      case 'gemini':
+        return this.chatGemini(systemPrompt, userMessage);
+      default:
+        throw new InternalServerErrorException(
+          `Unknown AI provider: ${this.provider}`,
+        );
+    }
+  }
+
+  private async chatAnthropic(
+    systemPrompt: string,
+    userMessage: string,
+  ): Promise<string> {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: this.model,
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userMessage }],
+      }),
+    });
+
+    if (!res.ok) {
+      const error = await res.text();
+      throw new InternalServerErrorException(`Anthropic API error: ${error}`);
+    }
+
+    const data = (await res.json()) as any;
+    return data.content?.[0]?.text ?? '';
+  }
+
+  private async chatOpenAI(
+    systemPrompt: string,
+    userMessage: string,
+  ): Promise<string> {
+    const res = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: this.model,
+        max_output_tokens: 4096,
+        input: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      const error = await res.text();
+      throw new InternalServerErrorException(`OpenAI API error: ${error}`);
+    }
+
+    const data = (await res.json()) as any;
+    return data.output?.[0]?.content?.[0]?.text ?? '';
+  }
+
+  private async chatGemini(
+    systemPrompt: string,
+    userMessage: string,
+  ): Promise<string> {
+    const apiKey = process.env.GEMINI_API_KEY;
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ parts: [{ text: userMessage }] }],
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      const error = await res.text();
+      throw new InternalServerErrorException(`Gemini API error: ${error}`);
+    }
+
+    const data = (await res.json()) as any;
+    return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  }
+
   async convertPdfToLatex(pdfBase64: string): Promise<string> {
     switch (this.provider) {
       case 'anthropic':
