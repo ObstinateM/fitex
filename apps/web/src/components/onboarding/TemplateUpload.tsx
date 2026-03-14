@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { LatexDropzone } from './LatexDropzone';
@@ -11,11 +11,16 @@ type Tab = 'latex' | 'pdf';
 
 export function TemplateUpload() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<Tab>('latex');
+  const [activeTab, setActiveTab] = useState<Tab>('pdf');
   const [tex, setTex] = useState<string | null>(null);
   const [filename, setFilename] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [compilingPreview, setCompilingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+  const blobUrlRef = useRef<string | null>(null);
 
   function switchTab(tab: Tab) {
     setActiveTab(tab);
@@ -23,6 +28,60 @@ export function TemplateUpload() {
     setFilename(undefined);
     setError('');
   }
+
+  useEffect(() => {
+    if (!tex) {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+        setPdfBlobUrl(null);
+      }
+      return;
+    }
+
+    let cancelled = false;
+    setCompilingPreview(true);
+    setPreviewError('');
+
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+      setPdfBlobUrl(null);
+    }
+
+    authedFetch('/cv/compile-raw', {
+      method: 'POST',
+      body: JSON.stringify({ tex }),
+    })
+      .then(async (res) => {
+        if (cancelled) return;
+        if (!res.ok) {
+          setPreviewError('Could not generate preview. The template may have LaTeX errors.');
+          return;
+        }
+        const blob = await res.blob();
+        if (cancelled) return;
+        const url = URL.createObjectURL(blob);
+        blobUrlRef.current = url;
+        setPdfBlobUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewError('Network error generating preview.');
+      })
+      .finally(() => {
+        if (!cancelled) setCompilingPreview(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tex]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+    };
+  }, []);
 
   async function handleConfirm() {
     if (!tex) return;
@@ -53,16 +112,6 @@ export function TemplateUpload() {
       {/* Tab selector */}
       <div className="flex rounded-xl bg-surface border border-border/30 p-1 gap-1">
         <button
-          onClick={() => switchTab('latex')}
-          className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-all duration-200 ${
-            activeTab === 'latex'
-              ? 'bg-violet text-white'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          I have a LaTeX template
-        </button>
-        <button
           onClick={() => switchTab('pdf')}
           className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-all duration-200 ${
             activeTab === 'pdf'
@@ -71,6 +120,16 @@ export function TemplateUpload() {
           }`}
         >
           Convert from PDF
+        </button>
+        <button
+          onClick={() => switchTab('latex')}
+          className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-all duration-200 ${
+            activeTab === 'latex'
+              ? 'bg-violet text-white'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          I have a LaTeX template
         </button>
       </div>
 
@@ -93,17 +152,31 @@ export function TemplateUpload() {
         )}
       </motion.div>
 
-      {/* Preview for LaTeX path */}
-      {tex && activeTab === 'latex' && (
+      {/* PDF Preview */}
+      {tex && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           className="overflow-hidden"
         >
-          <pre className="rounded-lg bg-surface p-4 text-xs font-mono text-muted-foreground overflow-auto max-h-48 border border-border/30 whitespace-pre-wrap">
-            {tex.slice(0, 300)}
-            {tex.length > 300 ? '\n…' : ''}
-          </pre>
+          {compilingPreview && (
+            <div className="flex flex-col items-center justify-center h-48 gap-3 rounded-xl border border-border/30 bg-surface">
+              <div className="h-5 w-5 rounded-full border-2 border-violet/20 border-t-violet animate-spin" />
+              <p className="text-xs text-muted-foreground">Generating preview…</p>
+            </div>
+          )}
+          {!compilingPreview && previewError && (
+            <p className="text-xs text-muted-foreground italic">{previewError}</p>
+          )}
+          {!compilingPreview && pdfBlobUrl && (
+            <div className="rounded-xl overflow-hidden border border-border/30">
+              <iframe
+                src={`${pdfBlobUrl}#toolbar=0`}
+                className="w-full h-[420px]"
+                title="CV preview"
+              />
+            </div>
+          )}
         </motion.div>
       )}
 

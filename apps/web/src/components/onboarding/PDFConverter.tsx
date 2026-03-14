@@ -117,10 +117,6 @@ export function PDFConverter({ onConverted }: PDFConverterProps) {
           </svg>
           Converted successfully
         </p>
-        <pre className="rounded-lg bg-surface p-4 text-xs font-mono text-muted-foreground overflow-auto max-h-48 border border-border/30 whitespace-pre-wrap">
-          {tex.slice(0, 300)}
-          {tex.length > 300 ? '\n…' : ''}
-        </pre>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <button
           onClick={() => currentFile && convert(currentFile)}

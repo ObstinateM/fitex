@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { TemplateUpload } from '@/components/onboarding/TemplateUpload';
+import { FitexLogo } from '@/components/landing/logo';
 
 export const metadata: Metadata = {
   title: 'Get started — Fitex',
@@ -17,9 +18,7 @@ export default function OnboardingPage() {
       <div className="relative z-10 w-full max-w-lg animate-navbar-enter">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="h-8 w-8 rounded-lg bg-violet/20 flex items-center justify-center">
-            <span className="text-sm font-bold text-violet-light">F</span>
-          </div>
+          <FitexLogo className="h-9 w-9" />
           <span className="text-lg font-semibold">Fitex</span>
         </div>
 

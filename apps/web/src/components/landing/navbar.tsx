@@ -44,6 +44,11 @@ export async function Navbar() {
               {label}
             </a>
           ))}
+          {process.env.NODE_ENV === 'development' && (
+            <Link href="/debug" className="text-sm text-amber-500/70 hover:text-amber-500 transition-colors duration-200">
+              Debug
+            </Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-3">

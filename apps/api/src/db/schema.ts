@@ -66,6 +66,14 @@ export const twoFactor = pgTable('two_factor', {
     .references(() => user.id, { onDelete: 'cascade' }),
 });
 
+export const pdfConversionLog = pgTable('pdf_conversion_log', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
 export const cvTemplate = pgTable('cv_template', {
   id: text('id').primaryKey(),
   userId: text('user_id')

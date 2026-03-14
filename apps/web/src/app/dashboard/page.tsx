@@ -19,7 +19,13 @@ interface CvTemplate {
   updatedAt: string;
 }
 
+interface PdfUsage {
+  used: number;
+  limit: number;
+}
+
 type TemplateView = 'idle' | 'edit' | 'add' | 'delete-confirm';
+type AddTab = 'upload' | 'pdf';
 
 // ─── Fake credits data ────────────────────────────────────────────────────────
 
@@ -83,9 +89,9 @@ function CreditBar({ used, total }: { used: number; total: number }) {
   );
 }
 
-// ─── LaTeX file dropzone (inline, minimal) ────────────────────────────────────
+// ─── .tex file dropzone (inline, minimal) ─────────────────────────────────────
 
-function LatexDropzoneInline({ onFile }: { onFile: (tex: string, filename: string) => void }) {
+function TexDropzoneInline({ onFile }: { onFile: (tex: string, filename: string) => void }) {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -131,16 +137,191 @@ function LatexDropzoneInline({ onFile }: { onFile: (tex: string, filename: strin
   );
 }
 
+// ─── PDF import (inline) ──────────────────────────────────────────────────────
+
+function PdfImportInline({
+  onConverted,
+  usage,
+}: {
+  onConverted: (tex: string, filename: string) => void;
+  usage: PdfUsage | null;
+}) {
+  const [dragging, setDragging] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [tex, setTex] = useState<string | null>(null);
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const atLimit = usage !== null && usage.used >= usage.limit;
+  const remaining = usage ? Math.max(0, usage.limit - usage.used) : null;
+
+  async function convert(file: File) {
+    setLoading(true);
+    setError('');
+    setTex(null);
+
+    const formData = new FormData();
+    formData.append('pdf', file);
+
+    try {
+      const res = await authedFetch('/cv/convert-pdf', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.status === 429) {
+        setError('Monthly limit reached (5/month). Upload a .tex file instead.');
+        return;
+      }
+      if (res.status === 422) {
+        setError('Could not extract CV data. Try a different file or upload a .tex directly.');
+        return;
+      }
+      if (!res.ok) {
+        setError('Conversion failed. Please try again.');
+        return;
+      }
+
+      const data = await res.json();
+      setTex(data.tex);
+      const baseName = file.name.replace(/\.pdf$/i, '') + '.tex';
+      onConverted(data.tex, baseName);
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleFile(file: File) {
+    if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
+      setError('Please upload a PDF file.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File must be smaller than 10 MB.');
+      return;
+    }
+    setCurrentFile(file);
+    await convert(file);
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  }
+
+  function onChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-32 gap-3">
+        <div className="h-5 w-5 rounded-full border-2 border-violet/20 border-t-violet animate-spin" />
+        <p className="text-sm text-muted-foreground">Extracting your CV…</p>
+      </div>
+    );
+  }
+
+  if (tex) {
+    return (
+      <div className="space-y-3">
+        <p className="text-xs text-emerald flex items-center gap-1.5">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          Extracted successfully
+        </p>
+        <pre className="rounded-lg bg-surface p-3 text-xs font-mono text-muted-foreground/70 overflow-auto max-h-32 border border-border/30 whitespace-pre-wrap">
+          {tex.slice(0, 300)}{tex.length > 300 ? '\n…' : ''}
+        </pre>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        <button
+          onClick={() => currentFile && convert(currentFile)}
+          className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
+        >
+          Retry extraction
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Usage badge */}
+      {usage && (
+        <div className={`flex items-center justify-between text-xs rounded-lg px-3 py-2 border ${
+          atLimit
+            ? 'border-red-500/20 bg-red-500/5 text-red-400'
+            : 'border-border/30 bg-surface/60 text-muted-foreground'
+        }`}>
+          <span>PDF imports</span>
+          <span className={atLimit ? 'text-red-400 font-medium' : 'font-medium'}>
+            {usage.used} / {usage.limit} this month
+            {remaining !== null && remaining > 0 && (
+              <span className="text-muted-foreground font-normal"> — {remaining} left</span>
+            )}
+          </span>
+        </div>
+      )}
+
+      <div
+        onDragOver={(e) => { e.preventDefault(); if (!atLimit) setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => { if (!atLimit) onDrop(e); else e.preventDefault(); }}
+        onClick={() => !atLimit && inputRef.current?.click()}
+        className={`rounded-xl border-2 border-dashed p-8 text-center transition-all duration-200 ${
+          atLimit
+            ? 'border-border/20 opacity-50 cursor-not-allowed'
+            : dragging
+            ? 'border-violet bg-violet/5 cursor-pointer'
+            : 'border-border/40 hover:border-violet/50 hover:bg-violet/3 cursor-pointer'
+        }`}
+      >
+        <input ref={inputRef} type="file" accept=".pdf,application/pdf" onChange={onChange} className="hidden" disabled={atLimit} />
+        <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-violet/10 text-violet-light mb-3 mx-auto">
+          <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.5">
+            <path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M9 13h6m-3-3v6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        {atLimit ? (
+          <>
+            <p className="text-sm font-medium text-foreground/60">Limit reached for this month</p>
+            <p className="text-xs text-muted-foreground mt-1">Upload a .tex file instead, or wait until next month.</p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm font-medium text-foreground/80">Drop your <span className="text-violet-light">PDF</span> here</p>
+            <p className="text-xs text-muted-foreground mt-1">or click to browse — max 10 MB</p>
+          </>
+        )}
+      </div>
+
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
 // ─── Template card ────────────────────────────────────────────────────────────
 
 function TemplateCard({
   template,
   onEdit,
   onDelete,
+  onGenerate,
+  generating,
 }: {
   template: CvTemplate;
   onEdit: () => void;
   onDelete: () => void;
+  onGenerate: () => void;
+  generating: boolean;
 }) {
   return (
     <div className="rounded-xl border border-border/40 bg-surface/60 overflow-hidden transition-all duration-300 hover:border-violet/20">
@@ -158,6 +339,21 @@ function TemplateCard({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={onGenerate}
+            disabled={generating}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald/80 hover:text-emerald px-3 py-1.5 rounded-lg hover:bg-emerald/10 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {generating ? (
+              <div className="h-3.5 w-3.5 rounded-full border-2 border-emerald/30 border-t-emerald animate-spin" />
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth="2">
+                <path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M9 13h6m-3-3v6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+            {generating ? 'Generating…' : 'Generate PDF'}
+          </button>
           <button
             onClick={onEdit}
             className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-light/80 hover:text-violet-light px-3 py-1.5 rounded-lg hover:bg-violet/10 transition-all duration-200"
@@ -178,7 +374,7 @@ function TemplateCard({
           </button>
         </div>
       </div>
-      {/* LaTeX preview */}
+      {/* Preview */}
       <pre className="px-4 py-3 text-xs font-mono text-muted-foreground/70 leading-relaxed overflow-hidden whitespace-pre-wrap line-clamp-4 max-h-24 select-none">
         {template.tex.slice(0, 280)}{template.tex.length > 280 ? '\n…' : ''}
       </pre>
@@ -200,8 +396,17 @@ export default function DashboardPage() {
   const [editFilename, setEditFilename] = useState('');
   const [addTex, setAddTex] = useState('');
   const [addFilename, setAddFilename] = useState('');
+  const [addTab, setAddTab] = useState<AddTab>('pdf');
   const [saving, setSaving] = useState(false);
   const [templateError, setTemplateError] = useState('');
+
+  // PDF usage state
+  const [pdfUsage, setPdfUsage] = useState<PdfUsage | null>(null);
+
+  // PDF generation state
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [pdfError, setPdfError] = useState('');
 
   // 2FA state
   const [totpURI, setTotpURI] = useState('');
@@ -233,9 +438,22 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // Fetch PDF usage
+  const fetchPdfUsage = useCallback(async () => {
+    try {
+      const res = await authedFetch('/cv/pdf-usage');
+      if (res.ok) setPdfUsage(await res.json());
+    } catch {
+      // non-critical
+    }
+  }, []);
+
   useEffect(() => {
-    if (session) fetchTemplate();
-  }, [session, fetchTemplate]);
+    if (session) {
+      fetchTemplate();
+      fetchPdfUsage();
+    }
+  }, [session, fetchTemplate, fetchPdfUsage]);
 
   // ── Template handlers ──────────────────────────────────────────────────────
 
@@ -287,10 +505,42 @@ export default function DashboardPage() {
     }
   }
 
+  function openAdd() {
+    setTemplateView('add');
+    setAddTex('');
+    setAddFilename('');
+    setAddTab('pdf');
+    setTemplateError('');
+    fetchPdfUsage();
+  }
+
   function confirmDelete() {
     // No backend DELETE endpoint yet — clear optimistically
     setTemplate(null);
     setTemplateView('idle');
+  }
+
+  async function generatePdf() {
+    setPdfGenerating(true);
+    setPdfError('');
+    if (pdfBlobUrl) {
+      URL.revokeObjectURL(pdfBlobUrl);
+      setPdfBlobUrl(null);
+    }
+    try {
+      const res = await authedFetch('/cv/compile', { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setPdfError(data.message ?? 'Compilation failed. Check your LaTeX source.');
+        return;
+      }
+      const blob = await res.blob();
+      setPdfBlobUrl(URL.createObjectURL(blob));
+    } catch {
+      setPdfError('Network error. Please try again.');
+    } finally {
+      setPdfGenerating(false);
+    }
   }
 
   // ── 2FA handlers ──────────────────────────────────────────────────────────
@@ -360,6 +610,14 @@ export default function DashboardPage() {
                 {label}
               </a>
             ))}
+            {process.env.NODE_ENV === 'development' && (
+              <Link
+                href="/debug"
+                className="text-sm text-amber-500/70 hover:text-amber-500 px-3 py-1.5 rounded-lg hover:bg-muted/50 transition-all duration-200"
+              >
+                Debug
+              </Link>
+            )}
           </nav>
 
           <div className="flex items-center gap-3">
@@ -425,12 +683,12 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between mb-6">
             <div>
               <p className="text-xs font-mono tracking-[0.3em] uppercase text-violet-light/60 mb-1.5">CV Templates</p>
-              <h2 className="text-xl font-display font-bold tracking-tight">Your LaTeX templates</h2>
+              <h2 className="text-xl font-display font-bold tracking-tight">Your CV template</h2>
               <p className="text-sm text-muted-foreground mt-1">Fitex tailors your CV to each job using this template.</p>
             </div>
             {template && templateView === 'idle' && (
               <button
-                onClick={() => { setTemplateView('add'); setAddTex(''); setAddFilename(''); setTemplateError(''); }}
+                onClick={openAdd}
                 className="inline-flex items-center gap-2 text-sm font-medium bg-violet/10 hover:bg-violet/20 text-violet-light border border-violet/20 hover:border-violet/40 px-4 py-2 rounded-lg transition-all duration-200"
               >
                 <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="2">
@@ -452,11 +710,40 @@ export default function DashboardPage() {
                     <span className="text-sm">Loading template…</span>
                   </div>
                 ) : template ? (
-                  <TemplateCard
-                    template={template}
-                    onEdit={startEdit}
-                    onDelete={() => setTemplateView('delete-confirm')}
-                  />
+                  <>
+                    <TemplateCard
+                      template={template}
+                      onEdit={startEdit}
+                      onDelete={() => setTemplateView('delete-confirm')}
+                      onGenerate={generatePdf}
+                      generating={pdfGenerating}
+                    />
+                    {pdfError && (
+                      <p className="mt-3 text-xs text-destructive">{pdfError}</p>
+                    )}
+                    {pdfBlobUrl && (
+                      <div className="mt-4 rounded-xl overflow-hidden border border-border/40 bg-surface/40">
+                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/30 bg-surface-raised/40">
+                          <span className="text-xs font-medium text-muted-foreground">CV Preview</span>
+                          <a
+                            href={pdfBlobUrl}
+                            download="cv.pdf"
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-light/80 hover:text-violet-light px-2.5 py-1 rounded-lg hover:bg-violet/10 transition-all duration-200"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth="2">
+                              <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            Download
+                          </a>
+                        </div>
+                        <iframe
+                          src={`${pdfBlobUrl}#toolbar=0`}
+                          className="w-full h-[700px]"
+                          title="CV Preview"
+                        />
+                      </div>
+                    )}
+                  </>
                 ) : (
                   /* Empty state */
                   <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -467,10 +754,10 @@ export default function DashboardPage() {
                     </div>
                     <h3 className="text-base font-medium mb-1">No template yet</h3>
                     <p className="text-sm text-muted-foreground max-w-xs mb-5">
-                      Upload your LaTeX CV once and Fitex will tailor it to every job you apply to.
+                      Upload your CV once and Fitex will tailor it to every job you apply to.
                     </p>
                     <button
-                      onClick={() => { setTemplateView('add'); setAddTex(''); setAddFilename(''); setTemplateError(''); }}
+                      onClick={openAdd}
                       className="inline-flex items-center gap-2 text-sm font-semibold bg-violet hover:bg-violet-dark text-white px-5 py-2.5 rounded-lg glow-violet transition-all duration-300 hover:scale-[1.02]"
                     >
                       <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="2">
@@ -495,9 +782,44 @@ export default function DashboardPage() {
                   </button>
                 </div>
 
-                <LatexDropzoneInline
-                  onFile={(tex, fname) => { setAddTex(tex); setAddFilename(fname); }}
-                />
+                {/* Tab switcher */}
+                <div className="flex gap-1 rounded-lg bg-surface p-1 border border-border/30">
+                  <button
+                    onClick={() => { setAddTab('pdf'); setAddTex(''); setAddFilename(''); }}
+                    className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
+                      addTab === 'pdf'
+                        ? 'bg-violet/15 text-violet-light border border-violet/20'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Import from PDF
+                  </button>
+                  <button
+                    onClick={() => { setAddTab('upload'); setAddTex(''); setAddFilename(''); }}
+                    className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
+                      addTab === 'upload'
+                        ? 'bg-violet/15 text-violet-light border border-violet/20'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Upload .tex file
+                  </button>
+                </div>
+
+                {/* Upload .tex tab */}
+                {addTab === 'upload' && (
+                  <TexDropzoneInline
+                    onFile={(tex, fname) => { setAddTex(tex); setAddFilename(fname); }}
+                  />
+                )}
+
+                {/* Import from PDF tab */}
+                {addTab === 'pdf' && (
+                  <PdfImportInline
+                    usage={pdfUsage}
+                    onConverted={(tex, fname) => { setAddTex(tex); setAddFilename(fname); }}
+                  />
+                )}
 
                 {addTex && (
                   <div className="space-y-3">
@@ -551,7 +873,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground font-medium block mb-1.5">LaTeX source</label>
+                  <label className="text-xs text-muted-foreground font-medium block mb-1.5">CV source</label>
                   <textarea
                     value={editTex}
                     onChange={(e) => setEditTex(e.target.value)}

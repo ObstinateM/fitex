@@ -50,6 +50,7 @@ export class AIService {
       headers: {
         'x-api-key': process.env.ANTHROPIC_API_KEY!,
         'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'pdfs-2024-09-25',
         'content-type': 'application/json',
       },
       body: JSON.stringify({
@@ -84,7 +85,7 @@ export class AIService {
   }
 
   private async callOpenAI(pdfBase64: string): Promise<string> {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -92,18 +93,17 @@ export class AIService {
       },
       body: JSON.stringify({
         model: this.model,
-        max_tokens: 8192,
-        messages: [
+        max_output_tokens: 8192,
+        input: [
           {
             role: 'user',
             content: [
               {
-                type: 'image_url',
-                image_url: {
-                  url: `data:application/pdf;base64,${pdfBase64}`,
-                },
+                type: 'input_file',
+                filename: 'cv.pdf',
+                file_data: `data:application/pdf;base64,${pdfBase64}`,
               },
-              { type: 'text', text: PDF_TO_LATEX_PROMPT },
+              { type: 'input_text', text: PDF_TO_LATEX_PROMPT },
             ],
           },
         ],
@@ -116,7 +116,7 @@ export class AIService {
     }
 
     const data = (await res.json()) as any;
-    return data.choices?.[0]?.message?.content ?? '';
+    return data.output?.[0]?.content?.[0]?.text ?? '';
   }
 
   private async callGemini(pdfBase64: string): Promise<string> {

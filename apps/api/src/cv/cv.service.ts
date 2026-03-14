@@ -2,17 +2,50 @@ import {
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, and, gte, count } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { cvTemplate, user } from '../db/schema.js';
+import { cvTemplate, pdfConversionLog, user } from '../db/schema.js';
 import { AIService } from '../ai/ai.service.js';
+
+const PDF_CONVERSION_LIMIT = 5;
 
 @Injectable()
 export class CvService {
   constructor(private readonly aiService: AIService) {}
 
-  async convertPdf(pdfBuffer: Buffer): Promise<{ tex: string }> {
+  async getPdfUsage(userId: string): Promise<{ used: number; limit: number }> {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const [row] = await db
+      .select({ count: count() })
+      .from(pdfConversionLog)
+      .where(
+        and(
+          eq(pdfConversionLog.userId, userId),
+          gte(pdfConversionLog.createdAt, startOfMonth),
+        ),
+      );
+
+    return { used: row?.count ?? 0, limit: PDF_CONVERSION_LIMIT };
+  }
+
+  async convertPdf(
+    pdfBuffer: Buffer,
+    userId: string,
+  ): Promise<{ tex: string }> {
+    const { used, limit } = await this.getPdfUsage(userId);
+    if (used >= limit) {
+      throw new HttpException(
+        { message: 'Monthly PDF conversion limit reached', used, limit },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const pdfBase64 = pdfBuffer.toString('base64');
     let tex = await this.aiService.convertPdfToLatex(pdfBase64);
 
@@ -24,6 +57,10 @@ export class CvService {
         'AI did not produce valid LaTeX — missing \\documentclass',
       );
     }
+
+    await db
+      .insert(pdfConversionLog)
+      .values({ id: crypto.randomUUID(), userId });
 
     return { tex };
   }
@@ -62,5 +99,39 @@ export class CvService {
       filename: template.filename,
       createdAt: template.createdAt,
     };
+  }
+
+  async compileLatex(tex: string): Promise<Buffer> {
+    const latexApiUrl =
+      process.env.LATEX_API_URL ?? 'https://latex.ytotech.com/builds/sync';
+
+    const response = await fetch(latexApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        compiler: 'pdflatex',
+        resources: [{ main: true, content: tex }],
+      }),
+    });
+
+    if (!response.ok) {
+      const log = await response.text();
+      throw new HttpException(
+        { message: 'LaTeX compilation failed', log },
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  }
+
+  async compileTemplate(userId: string): Promise<Buffer> {
+    const template = await this.getTemplate(userId);
+    return this.compileLatex(template.tex);
+  }
+
+  async compileRaw(tex: string): Promise<Buffer> {
+    return this.compileLatex(tex);
   }
 }
