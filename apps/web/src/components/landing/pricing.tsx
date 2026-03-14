@@ -65,7 +65,7 @@ const plans = [
   },
   {
     name: 'Unlimited',
-    price: 39,
+    price: 49,
     suffix: '/month',
     badge: 'Sprint mode',
     subtitle: 'Unlimited for 30 days',
@@ -191,7 +191,7 @@ export function Pricing() {
         </div>
 
         <AnimateIn delay={500} className="text-center text-sm text-muted-foreground/60 mt-8">
-          1 credit = 1 tailored CV with ATS analysis, Q&A answers, and salary estimate included.
+          1 credit = CV tailoring. Add Q&A (+0.5) or salary estimate (+0.5) per generation.
         </AnimateIn>
       </div>
     </section>

@@ -90,21 +90,24 @@
 
 ## 07 — Stories
 
-- [ ] **Story Management (CRUD)** — Inline add form, expandable story list, edit mode, two-click delete. Empty state guidance. 20-char summary, count footer.
+- [X] **Story Management (CRUD)** — Inline add form, expandable story list, edit mode, two-click delete. Empty state guidance. Count footer.
   Touches: `webapp`
   Specs: [story-management](.specs/07-stories/story-management.md)
 
-- [ ] **Story Enhancement** — AI polish button in add/edit forms. Returns polished narrative + tags. Form values replaced but not auto-saved.
+- [X] **Story Enhancement** — AI polish button in add/edit forms. Returns polished narrative + tags. Form values replaced but not auto-saved.
   Touches: `webapp` · `api`
   Specs: [story-enhancement](.specs/07-stories/story-enhancement.md)
 
-- [ ] **Bulk Import** — 3-phase flow: raw text input → AI parsing (200-char min descriptions) → review with editable cards + duplicate warnings → import.
+- [X] **Bulk Import** — 3-phase flow: raw text input → AI parsing → review with editable cards + duplicate warnings → import. Progress step indicator.
   Touches: `webapp` · `api`
   Specs: [bulk-import](.specs/07-stories/bulk-import.md)
 
-- [ ] **Duplicate Detection** — Title substring match (>50%) and tag Jaccard coefficient (>60%). First match per story flagged with warning.
+- [X] **Duplicate Detection** — Title substring match (>50%) and tag Jaccard coefficient (>60%). First match per story flagged with warning.
   Touches: `webapp`
   Specs: [duplicate-detection](.specs/07-stories/duplicate-detection.md)
+
+- [X] **Search & Tag Filtering** — Search bar + horizontal scrollable tag strip. AND filter logic. Available tags react to search + current selection (tags producing no results are hidden).
+  Touches: `webapp`
 
 - [ ] **Story Relevance Filter** — Pre-generation AI filtering using story summaries only (title + tags). Returns StorySelection[] with relevance reasons. Validates against hallucinated IDs.
   Touches: `webapp` · `api`

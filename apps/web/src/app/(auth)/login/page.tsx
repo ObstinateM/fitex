@@ -7,6 +7,7 @@ import { signIn } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toast } from '@/components/ui/sonner';
 
 const GoogleIcon = () => (
   <svg className="mr-2 size-4 shrink-0" viewBox="0 0 24 24">
@@ -21,24 +22,23 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
-    const { error: signInError } = await signIn.email({ email, password });
+    const { data, error: signInError } = await signIn.email({ email, password });
 
     setLoading(false);
 
     if (signInError) {
-      if (signInError.status === 403 && signInError.message?.includes('two-factor')) {
-        router.push('/two-factor');
-        return;
-      }
-      setError(signInError.message ?? 'Invalid email or password');
+      toast.error(signInError.message ?? 'Invalid email or password');
+      return;
+    }
+
+    if ((data as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect) {
+      router.push('/two-factor');
       return;
     }
 
@@ -124,12 +124,6 @@ export default function LoginPage() {
             className="h-10 bg-surface/60 border-border/50 focus-visible:border-violet/60 focus-visible:ring-violet/20"
           />
         </div>
-
-        {error && (
-          <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error}
-          </p>
-        )}
 
         <Button
           type="submit"

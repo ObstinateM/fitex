@@ -6,6 +6,7 @@ import { twoFactor } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toast } from '@/components/ui/sonner';
 import {
   Card,
   CardContent,
@@ -17,12 +18,10 @@ import {
 export default function TwoFactorPage() {
   const router = useRouter();
   const [code, setCode] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     const { error: verifyError } = await twoFactor.verifyTotp({ code });
@@ -30,7 +29,7 @@ export default function TwoFactorPage() {
     setLoading(false);
 
     if (verifyError) {
-      setError(verifyError.message ?? 'Invalid code');
+      toast.error(verifyError.message ?? 'Invalid code');
       return;
     }
 
@@ -62,10 +61,6 @@ export default function TwoFactorPage() {
               className="text-center text-lg tracking-widest"
             />
           </div>
-
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
 
           <Button
             type="submit"

@@ -82,7 +82,7 @@ const jsonLd = {
         },
         {
           '@type': 'Offer',
-          price: '39',
+          price: '49',
           priceCurrency: 'EUR',
           description: 'Unlimited — unlimited generations for 30 days',
         },

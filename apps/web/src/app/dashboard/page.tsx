@@ -8,7 +8,49 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FitexLogo } from '@/components/landing/logo';
+import { QRCodeSVG } from 'qrcode.react';
 import Link from 'next/link';
+import { toast } from '@/components/ui/sonner';
+
+// ─── PDF cache ────────────────────────────────────────────────────────────────
+// Two-layer cache: in-memory Map (fast, same JS lifetime) + sessionStorage
+// (survives page reloads within the same tab).
+// Key = templateId:updatedAt so stale versions are never reused.
+
+const PDF_MEM_CACHE = new Map<string, string>(); // key → blob URL
+const PDF_SESSION_KEY = 'fitex:pdf-cache';       // sessionStorage entry
+
+function pdfCacheKey(t: { id: string; updatedAt: string }) {
+  return `${t.id}:${t.updatedAt}`;
+}
+
+function base64ToBlobUrl(b64: string): string {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+}
+
+function loadPdfFromSession(key: string): string | null {
+  try {
+    const raw = sessionStorage.getItem(PDF_SESSION_KEY);
+    if (!raw) return null;
+    const { key: k, b64 } = JSON.parse(raw) as { key: string; b64: string };
+    if (k !== key) return null;
+    return base64ToBlobUrl(b64);
+  } catch { return null; }
+}
+
+function savePdfToSession(key: string, blob: Blob) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const b64 = (reader.result as string).split(',')[1];
+      sessionStorage.setItem(PDF_SESSION_KEY, JSON.stringify({ key, b64 }));
+    } catch { /* quota exceeded — skip */ }
+  };
+  reader.readAsDataURL(blob);
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,8 +66,7 @@ interface PdfUsage {
   limit: number;
 }
 
-type TemplateView = 'idle' | 'edit' | 'add' | 'delete-confirm';
-type AddTab = 'upload' | 'pdf';
+type TemplateView = 'idle' | 'add';
 
 // ─── Fake credits data ────────────────────────────────────────────────────────
 
@@ -89,7 +130,7 @@ function CreditBar({ used, total }: { used: number; total: number }) {
   );
 }
 
-// ─── .tex file dropzone (inline, minimal) ─────────────────────────────────────
+// ─── .tex file dropzone (inline) ─────────────────────────────────────────────
 
 function TexDropzoneInline({ onFile }: { onFile: (tex: string, filename: string) => void }) {
   const [dragging, setDragging] = useState(false);
@@ -97,9 +138,7 @@ function TexDropzoneInline({ onFile }: { onFile: (tex: string, filename: string)
 
   function readFile(file: File) {
     const reader = new FileReader();
-    reader.onload = (e) => {
-      onFile(e.target?.result as string, file.name);
-    };
+    reader.onload = (e) => onFile(e.target?.result as string, file.name);
     reader.readAsText(file);
   }
 
@@ -108,6 +147,7 @@ function TexDropzoneInline({ onFile }: { onFile: (tex: string, filename: string)
     setDragging(false);
     const file = e.dataTransfer.files[0];
     if (file?.name.endsWith('.tex')) readFile(file);
+    else toast.error('Please drop a .tex file.');
   }
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -148,7 +188,6 @@ function PdfImportInline({
 }) {
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [tex, setTex] = useState<string | null>(null);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -158,7 +197,6 @@ function PdfImportInline({
 
   async function convert(file: File) {
     setLoading(true);
-    setError('');
     setTex(null);
 
     const formData = new FormData();
@@ -171,15 +209,15 @@ function PdfImportInline({
       });
 
       if (res.status === 429) {
-        setError('Monthly limit reached (5/month). Upload a .tex file instead.');
+        toast.error('Monthly limit reached (5/month).');
         return;
       }
       if (res.status === 422) {
-        setError('Could not extract CV data. Try a different file or upload a .tex directly.');
+        toast.error('Could not extract CV data. Try a different file.');
         return;
       }
       if (!res.ok) {
-        setError('Conversion failed. Please try again.');
+        toast.error('Conversion failed. Please try again.');
         return;
       }
 
@@ -188,7 +226,7 @@ function PdfImportInline({
       const baseName = file.name.replace(/\.pdf$/i, '') + '.tex';
       onConverted(data.tex, baseName);
     } catch {
-      setError('Network error. Please try again.');
+      toast.error('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -196,11 +234,11 @@ function PdfImportInline({
 
   async function handleFile(file: File) {
     if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
-      setError('Please upload a PDF file.');
+      toast.error('Please upload a PDF file.');
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setError('File must be smaller than 10 MB.');
+      toast.error('File must be smaller than 10 MB.');
       return;
     }
     setCurrentFile(file);
@@ -237,10 +275,6 @@ function PdfImportInline({
           </svg>
           Extracted successfully
         </p>
-        <pre className="rounded-lg bg-surface p-3 text-xs font-mono text-muted-foreground/70 overflow-auto max-h-32 border border-border/30 whitespace-pre-wrap">
-          {tex.slice(0, 300)}{tex.length > 300 ? '\n…' : ''}
-        </pre>
-        {error && <p className="text-xs text-destructive">{error}</p>}
         <button
           onClick={() => currentFile && convert(currentFile)}
           className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
@@ -293,7 +327,7 @@ function PdfImportInline({
         {atLimit ? (
           <>
             <p className="text-sm font-medium text-foreground/60">Limit reached for this month</p>
-            <p className="text-xs text-muted-foreground mt-1">Upload a .tex file instead, or wait until next month.</p>
+            <p className="text-xs text-muted-foreground mt-1">Try again next month.</p>
           </>
         ) : (
           <>
@@ -302,82 +336,150 @@ function PdfImportInline({
           </>
         )}
       </div>
-
-      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }
 
-// ─── Template card ────────────────────────────────────────────────────────────
+// ─── Template card (PDF preview) ─────────────────────────────────────────────
 
 function TemplateCard({
   template,
-  onEdit,
-  onDelete,
-  onGenerate,
-  generating,
+  pdfBlobUrl,
+  pdfGenerating,
+  pdfError,
+  onReplace,
+  onRetry,
 }: {
   template: CvTemplate;
-  onEdit: () => void;
-  onDelete: () => void;
-  onGenerate: () => void;
-  generating: boolean;
+  pdfBlobUrl: string | null;
+  pdfGenerating: boolean;
+  pdfError: string;
+  onReplace: () => void;
+  onRetry: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-border/40 bg-surface/60 overflow-hidden transition-all duration-300 hover:border-violet/20">
+    <div className="rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden transition-all duration-300">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-surface-raised/40">
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/30 bg-surface-raised/30">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-violet/10 text-violet-light shrink-0">
+          <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-violet/10 text-violet-light shrink-0">
             <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.5">
               <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
           <div>
-            <p className="text-sm font-medium text-foreground">{template.filename ?? 'cv-template.tex'}</p>
+            <p className="text-sm font-medium text-foreground leading-tight">{template.filename ?? 'cv-template.tex'}</p>
             <p className="text-xs text-muted-foreground">Updated {timeAgo(template.updatedAt)}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={onGenerate}
-            disabled={generating}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald/80 hover:text-emerald px-3 py-1.5 rounded-lg hover:bg-emerald/10 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={onReplace}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-light/80 hover:text-violet-light px-3 py-1.5 rounded-lg hover:bg-violet/10 border border-violet/20 hover:border-violet/40 transition-all duration-200"
           >
-            {generating ? (
-              <div className="h-3.5 w-3.5 rounded-full border-2 border-emerald/30 border-t-emerald animate-spin" />
-            ) : (
+            <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth="2">
+              <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Replace
+          </button>
+          {pdfBlobUrl && (
+            <a
+              href={pdfBlobUrl}
+              download="cv.pdf"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg hover:bg-muted/50 border border-border/30 hover:border-border/60 transition-all duration-200"
+            >
               <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth="2">
-                <path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M9 13h6m-3-3v6" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            )}
-            {generating ? 'Generating…' : 'Generate PDF'}
-          </button>
-          <button
-            onClick={onEdit}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-light/80 hover:text-violet-light px-3 py-1.5 rounded-lg hover:bg-violet/10 transition-all duration-200"
-          >
-            <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth="2">
-              <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Edit
-          </button>
-          <button
-            onClick={onDelete}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-all duration-200"
-          >
-            <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth="2">
-              <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Delete
-          </button>
+              Download
+            </a>
+          )}
         </div>
       </div>
-      {/* Preview */}
-      <pre className="px-4 py-3 text-xs font-mono text-muted-foreground/70 leading-relaxed overflow-hidden whitespace-pre-wrap line-clamp-4 max-h-24 select-none">
-        {template.tex.slice(0, 280)}{template.tex.length > 280 ? '\n…' : ''}
-      </pre>
+
+      {/* PDF body */}
+      {pdfGenerating ? (
+        <div className="relative h-[700px] overflow-hidden bg-surface/20">
+          {/* Skeleton lines mimicking a document */}
+          <div className="absolute inset-0 p-10 flex flex-col gap-4">
+            <div className="h-5 w-2/5 rounded-md bg-border/30 animate-pulse" />
+            <div className="h-3 w-1/3 rounded-md bg-border/20 animate-pulse" style={{ animationDelay: '80ms' }} />
+            <div className="mt-4 h-px w-full bg-border/20" />
+            {[1, 0.9, 0.95, 0.7, 1, 0.85, 0.6].map((w, i) => (
+              <div
+                key={i}
+                className="h-2.5 rounded-md bg-border/20 animate-pulse"
+                style={{ width: `${w * 100}%`, animationDelay: `${(i + 2) * 80}ms` }}
+              />
+            ))}
+            <div className="mt-2 h-px w-full bg-border/20" />
+            <div className="h-3 w-1/4 rounded-md bg-border/25 animate-pulse" style={{ animationDelay: '720ms' }} />
+            {[0.8, 1, 0.75, 0.9].map((w, i) => (
+              <div
+                key={i}
+                className="h-2.5 rounded-md bg-border/20 animate-pulse"
+                style={{ width: `${w * 100}%`, animationDelay: `${(i + 10) * 80}ms` }}
+              />
+            ))}
+            <div className="mt-2 h-px w-full bg-border/20" />
+            <div className="h-3 w-1/3 rounded-md bg-border/25 animate-pulse" style={{ animationDelay: '1120ms' }} />
+            {[0.95, 0.7, 1, 0.6].map((w, i) => (
+              <div
+                key={i}
+                className="h-2.5 rounded-md bg-border/20 animate-pulse"
+                style={{ width: `${w * 100}%`, animationDelay: `${(i + 15) * 80}ms` }}
+              />
+            ))}
+          </div>
+          {/* Fade overlay + label */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
+          <div className="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-2">
+            <div className="h-4 w-4 rounded-full border-2 border-violet/30 border-t-violet animate-spin" />
+            <p className="text-xs text-muted-foreground/70">Loading your CV…</p>
+          </div>
+        </div>
+      ) : pdfError ? (
+        <div className="flex flex-col items-center justify-center h-[700px] gap-4 bg-surface/20">
+          <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-destructive/10 text-destructive">
+            <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" stroke="currentColor" strokeWidth="1.5">
+              <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div className="text-center max-w-xs">
+            <p className="text-sm text-foreground/80 font-medium mb-1">Compilation failed</p>
+            <p className="text-xs text-muted-foreground mb-4">{pdfError}</p>
+            <button
+              onClick={onRetry}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-light px-4 py-2 rounded-lg bg-violet/10 hover:bg-violet/20 border border-violet/20 transition-all duration-200"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      ) : pdfBlobUrl ? (
+        <iframe
+          src={`${pdfBlobUrl}#toolbar=0`}
+          className="w-full h-[700px]"
+          title="CV Preview"
+        />
+      ) : (
+        <div className="relative h-[700px] overflow-hidden bg-surface/20">
+          <div className="absolute inset-0 p-10 flex flex-col gap-4">
+            {[0.4, 0.25, null, 1, 0.9, 0.95, 0.7, null, 0.3, 0.8, 1, 0.75].map((w, i) =>
+              w === null ? (
+                <div key={i} className="h-px w-full bg-border/20" />
+              ) : (
+                <div key={i} className="h-2.5 rounded-md bg-border/20 animate-pulse" style={{ width: `${w * 100}%`, animationDelay: `${i * 60}ms` }} />
+              )
+            )}
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
+          <div className="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-2">
+            <div className="h-4 w-4 rounded-full border-2 border-violet/30 border-t-violet animate-spin" />
+            <p className="text-xs text-muted-foreground/70">Loading your CV…</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -392,11 +494,9 @@ export default function DashboardPage() {
   const [template, setTemplate] = useState<CvTemplate | null>(null);
   const [templateLoading, setTemplateLoading] = useState(true);
   const [templateView, setTemplateView] = useState<TemplateView>('idle');
-  const [editTex, setEditTex] = useState('');
-  const [editFilename, setEditFilename] = useState('');
   const [addTex, setAddTex] = useState('');
   const [addFilename, setAddFilename] = useState('');
-  const [addTab, setAddTab] = useState<AddTab>('pdf');
+  const [addTab, setAddTab] = useState<'pdf' | 'tex'>('pdf');
   const [saving, setSaving] = useState(false);
   const [templateError, setTemplateError] = useState('');
 
@@ -408,12 +508,20 @@ export default function DashboardPage() {
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState('');
 
+  // Prevents re-triggering auto-compile on the same template load
+  const autoCompileRef = useRef(false);
+
   // 2FA state
   const [totpURI, setTotpURI] = useState('');
   const [verifyCode, setVerifyCode] = useState('');
   const [twoFAPassword, setTwoFAPassword] = useState('');
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
-  const [twoFAStatus, setTwoFAStatus] = useState('');
+  const [showDisablePrompt, setShowDisablePrompt] = useState(false);
+  const [disableCode, setDisableCode] = useState('');
+  const [disablePassword, setDisablePassword] = useState('');
+
+  // User settings panel
+  const [showUserSettings, setShowUserSettings] = useState(false);
 
   // Auth redirect
   useEffect(() => {
@@ -421,18 +529,20 @@ export default function DashboardPage() {
   }, [isPending, session, router]);
 
   // Fetch template
-  const fetchTemplate = useCallback(async () => {
+  const fetchTemplate = useCallback(async (): Promise<CvTemplate | null> => {
     setTemplateLoading(true);
     try {
       const res = await authedFetch('/cv/template');
       if (res.ok) {
-        const data = await res.json();
+        const data: CvTemplate = await res.json();
         setTemplate(data);
-      } else {
-        setTemplate(null);
+        return data;
       }
+      setTemplate(null);
+      return null;
     } catch {
       setTemplate(null);
+      return null;
     } finally {
       setTemplateLoading(false);
     }
@@ -455,34 +565,53 @@ export default function DashboardPage() {
     }
   }, [session, fetchTemplate, fetchPdfUsage]);
 
-  // ── Template handlers ──────────────────────────────────────────────────────
+  // ── PDF generation ─────────────────────────────────────────────────────────
 
-  function startEdit() {
-    if (!template) return;
-    setEditTex(template.tex);
-    setEditFilename(template.filename ?? '');
-    setTemplateError('');
-    setTemplateView('edit');
-  }
-
-  async function saveEdit() {
-    if (!editTex.trim()) return;
-    setSaving(true);
-    setTemplateError('');
+  const generatePdf = useCallback(async (templateToCache?: CvTemplate) => {
+    setPdfGenerating(true);
+    setPdfError('');
+    setPdfBlobUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     try {
-      const res = await authedFetch('/cv/template', {
-        method: 'POST',
-        body: JSON.stringify({ tex: editTex, filename: editFilename || undefined }),
-      });
-      if (!res.ok) { setTemplateError('Failed to save. Please try again.'); return; }
-      await fetchTemplate();
-      setTemplateView('idle');
+      const res = await authedFetch('/cv/compile', { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setPdfError(data.message ?? 'Compilation failed. Check your LaTeX source.');
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      if (templateToCache) {
+        const key = pdfCacheKey(templateToCache);
+        PDF_MEM_CACHE.set(key, url);
+        savePdfToSession(key, blob);
+      }
+      setPdfBlobUrl(url);
     } catch {
-      setTemplateError('Network error. Please try again.');
+      setPdfError('Network error. Please try again.');
     } finally {
-      setSaving(false);
+      setPdfGenerating(false);
     }
-  }
+  }, []);
+
+  // Auto-compile when template first loads (serves from cache when available)
+  useEffect(() => {
+    if (!template || pdfBlobUrl || pdfGenerating || autoCompileRef.current) return;
+    autoCompileRef.current = true;
+    const key = pdfCacheKey(template);
+    // 1. In-memory cache (same JS lifetime)
+    const memHit = PDF_MEM_CACHE.get(key);
+    if (memHit) { setPdfBlobUrl(memHit); return; }
+    // 2. sessionStorage (survives page reloads)
+    const sessionHit = loadPdfFromSession(key);
+    if (sessionHit) { PDF_MEM_CACHE.set(key, sessionHit); setPdfBlobUrl(sessionHit); return; }
+    // 3. Compile fresh
+    generatePdf(template);
+  }, [template]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Template handlers ──────────────────────────────────────────────────────
 
   async function saveAdd() {
     if (!addTex.trim()) return;
@@ -494,10 +623,22 @@ export default function DashboardPage() {
         body: JSON.stringify({ tex: addTex, filename: addFilename || undefined }),
       });
       if (!res.ok) { setTemplateError('Failed to save. Please try again.'); return; }
-      await fetchTemplate();
+
+      // Bust both cache layers so the new template always compiles fresh
+      PDF_MEM_CACHE.clear();
+      try { sessionStorage.removeItem(PDF_SESSION_KEY); } catch { /* ignore */ }
+      setPdfBlobUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+      setPdfError('');
+
+      // Mark ref as handled so the auto-compile effect doesn't double-fire
+      autoCompileRef.current = true;
+      const newTemplate = await fetchTemplate();
       setTemplateView('idle');
       setAddTex('');
       setAddFilename('');
+
+      // Explicitly recompile with the fresh template
+      if (newTemplate) generatePdf(newTemplate);
     } catch {
       setTemplateError('Network error. Please try again.');
     } finally {
@@ -514,51 +655,33 @@ export default function DashboardPage() {
     fetchPdfUsage();
   }
 
-  function confirmDelete() {
-    // No backend DELETE endpoint yet — clear optimistically
-    setTemplate(null);
-    setTemplateView('idle');
-  }
-
-  async function generatePdf() {
-    setPdfGenerating(true);
-    setPdfError('');
-    if (pdfBlobUrl) {
-      URL.revokeObjectURL(pdfBlobUrl);
-      setPdfBlobUrl(null);
-    }
-    try {
-      const res = await authedFetch('/cv/compile', { method: 'POST' });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setPdfError(data.message ?? 'Compilation failed. Check your LaTeX source.');
-        return;
-      }
-      const blob = await res.blob();
-      setPdfBlobUrl(URL.createObjectURL(blob));
-    } catch {
-      setPdfError('Network error. Please try again.');
-    } finally {
-      setPdfGenerating(false);
-    }
-  }
-
   // ── 2FA handlers ──────────────────────────────────────────────────────────
 
   async function handleEnable2FA(e: React.FormEvent) {
     e.preventDefault();
-    setTwoFAStatus('');
     const { data, error } = await twoFactor.enable({ password: twoFAPassword });
-    if (error) { setTwoFAStatus(error.message ?? 'Failed to enable 2FA'); return; }
+    if (error) { toast.error(error.message ?? 'Failed to enable 2FA'); return; }
     if (data?.totpURI) { setTotpURI(data.totpURI); setShowPasswordPrompt(false); setTwoFAPassword(''); }
   }
 
   async function handleVerify2FA(e: React.FormEvent) {
     e.preventDefault();
     const { error } = await twoFactor.verifyTotp({ code: verifyCode });
-    if (error) { setTwoFAStatus(error.message ?? 'Invalid code'); return; }
-    setTwoFAStatus('2FA enabled successfully');
+    if (error) { toast.error(error.message ?? 'Invalid code'); return; }
+    toast.success('2FA enabled successfully');
     setTotpURI(''); setVerifyCode('');
+  }
+
+  async function handleDisable2FA(e: React.FormEvent) {
+    e.preventDefault();
+    const { error: verifyError } = await twoFactor.verifyTotp({ code: disableCode });
+    if (verifyError) { toast.error('Invalid authenticator code'); return; }
+    const { error: disableError } = await twoFactor.disable({ password: disablePassword });
+    if (disableError) { toast.error(disableError.message ?? 'Failed to disable 2FA'); return; }
+    toast.success('2FA disabled successfully');
+    setShowDisablePrompt(false);
+    setDisableCode('');
+    setDisablePassword('');
   }
 
   // ── Loading / unauthenticated ─────────────────────────────────────────────
@@ -596,20 +719,7 @@ export default function DashboardPage() {
             <span className="text-base font-semibold tracking-tight">Fitex</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1">
-            {[
-              { label: 'Overview', href: '#overview' },
-              { label: 'Templates', href: '#templates' },
-              { label: 'Security', href: '#security' },
-            ].map(({ label, href }) => (
-              <a
-                key={label}
-                href={href}
-                className="text-sm text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg hover:bg-muted/50 transition-all duration-200"
-              >
-                {label}
-              </a>
-            ))}
+          <div className="flex items-center gap-3">
             {process.env.NODE_ENV === 'development' && (
               <Link
                 href="/debug"
@@ -618,19 +728,142 @@ export default function DashboardPage() {
                 Debug
               </Link>
             )}
-          </nav>
-
-          <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-1.5 border border-border/30">
               <div className="h-1.5 w-1.5 rounded-full bg-emerald animate-pulse" />
               <span className="text-xs text-muted-foreground font-medium">{CREDITS_REMAINING} credits</span>
             </div>
-            <button
-              onClick={async () => { await signOut({ fetchOptions: {} }); router.push('/login'); }}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 px-3 py-1.5 rounded-lg hover:bg-muted/50"
-            >
-              Sign out
-            </button>
+            {/* User settings button */}
+            <div className="relative">
+              <button
+                onClick={() => setShowUserSettings((v) => !v)}
+                aria-label="User settings"
+                className={`flex items-center justify-center h-8 w-8 rounded-lg border transition-all duration-200 ${showUserSettings ? 'border-violet/50 bg-violet/10 text-violet-light' : 'border-border/40 bg-muted/30 text-muted-foreground hover:border-border/60 hover:bg-muted/50 hover:text-foreground'}`}
+              >
+                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+
+              {/* Settings dropdown */}
+              {showUserSettings && (
+                <>
+                  {/* Click-away backdrop */}
+                  <div className="fixed inset-0 z-40" onClick={() => setShowUserSettings(false)} />
+                  <div className="absolute right-0 top-full mt-2 z-50 w-80 rounded-2xl border border-border/40 bg-card/95 backdrop-blur-xl shadow-2xl shadow-black/20 overflow-hidden">
+                    {/* Header */}
+                    <div className="px-5 py-4 border-b border-border/30">
+                      <p className="text-xs font-mono tracking-[0.2em] uppercase text-violet-light/60 mb-0.5">Account</p>
+                      <p className="text-sm font-medium text-foreground truncate">{session.user.email}</p>
+                    </div>
+
+                    {/* 2FA section */}
+                    <div className="px-5 py-4 border-b border-border/30">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-emerald/10 text-emerald shrink-0">
+                          <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.5">
+                            <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground">Two-factor authentication</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">Secure your account with an authenticator app.</p>
+                        </div>
+                      </div>
+
+                      {/* Enabled state */}
+                      {session.user.twoFactorEnabled && !showDisablePrompt && !totpURI && !showPasswordPrompt && (
+                        <div className="flex flex-col gap-3">
+                          <div className="inline-flex items-center gap-2 text-xs font-mono tracking-wider text-emerald bg-emerald/10 border border-emerald/20 px-3 py-1.5 rounded-full w-fit">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald animate-pulse" />
+                            Active
+                          </div>
+                          <button
+                            onClick={() => setShowDisablePrompt(true)}
+                            className="inline-flex items-center gap-2 text-xs font-medium bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 hover:border-destructive/40 px-3 py-2 rounded-lg transition-all duration-200 w-fit"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth="2">
+                              <path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" strokeLinecap="round" />
+                            </svg>
+                            Disable 2FA
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Disable confirmation form */}
+                      {session.user.twoFactorEnabled && showDisablePrompt && (
+                        <form onSubmit={handleDisable2FA} className="flex flex-col gap-3">
+                          <p className="text-xs text-muted-foreground">Enter your authenticator code and password to confirm.</p>
+                          <div>
+                            <Label htmlFor="disable-code" className="text-xs text-muted-foreground">Authenticator code</Label>
+                            <Input id="disable-code" type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="000000" value={disableCode} onChange={(e) => setDisableCode(e.target.value)} required className="mt-1 font-mono tracking-widest text-center text-sm" />
+                          </div>
+                          <div>
+                            <Label htmlFor="disable-password" className="text-xs text-muted-foreground">Password</Label>
+                            <Input id="disable-password" type="password" placeholder="Your account password" value={disablePassword} onChange={(e) => setDisablePassword(e.target.value)} required className="mt-1 text-sm" />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button type="submit" disabled={disableCode.length !== 6 || !disablePassword} className="bg-destructive hover:bg-destructive/90 text-white text-xs h-8 px-3">Confirm disable</Button>
+                            <Button type="button" variant="ghost" onClick={() => { setShowDisablePrompt(false); setDisableCode(''); setDisablePassword(''); }} className="text-xs h-8 px-3">Cancel</Button>
+                          </div>
+                        </form>
+                      )}
+
+                      {/* Not enabled state */}
+                      {!session.user.twoFactorEnabled && !totpURI && !showPasswordPrompt && (
+                        <button
+                          onClick={() => setShowPasswordPrompt(true)}
+                          className="inline-flex items-center gap-2 text-xs font-medium bg-emerald/10 hover:bg-emerald/20 text-emerald border border-emerald/20 hover:border-emerald/40 px-3 py-2 rounded-lg transition-all duration-200"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth="2">
+                            <path d="M12 4v16m-8-8h16" strokeLinecap="round" />
+                          </svg>
+                          Enable 2FA
+                        </button>
+                      )}
+
+                      {showPasswordPrompt && !totpURI && (
+                        <form onSubmit={handleEnable2FA} className="flex flex-col gap-3">
+                          <div>
+                            <Label htmlFor="twofa-password" className="text-xs text-muted-foreground">Confirm your password</Label>
+                            <Input id="twofa-password" type="password" placeholder="Your account password" value={twoFAPassword} onChange={(e) => setTwoFAPassword(e.target.value)} required className="mt-1 text-sm" />
+                          </div>
+                          <Button type="submit" className="bg-violet hover:bg-violet-dark text-white text-xs h-8 px-3 w-fit">Continue</Button>
+                        </form>
+                      )}
+
+                      {totpURI && (
+                        <div className="space-y-3">
+                          <p className="text-xs text-muted-foreground">Scan this QR code with your authenticator app, then enter the 6-digit code below.</p>
+                          <div className="flex justify-center rounded-xl bg-white p-3 border border-border/30 w-fit">
+                            <QRCodeSVG value={totpURI} size={160} />
+                          </div>
+                          <form onSubmit={handleVerify2FA} className="flex flex-col gap-3">
+                            <div>
+                              <Label htmlFor="verify-code" className="text-xs text-muted-foreground">Verification code</Label>
+                              <Input id="verify-code" type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="000000" value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)} required className="mt-1 font-mono tracking-widest text-center text-sm" />
+                            </div>
+                            <Button type="submit" disabled={verifyCode.length !== 6} className="bg-violet hover:bg-violet-dark text-white text-xs h-8 px-3 w-fit">Verify & activate</Button>
+                          </form>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Sign out */}
+                    <div className="px-5 py-3">
+                      <button
+                        onClick={async () => { await signOut({ fetchOptions: {} }); router.push('/login'); }}
+                        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 w-full py-1.5 rounded-lg hover:bg-muted/50 px-2 -mx-2"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        Sign out
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -680,73 +913,33 @@ export default function DashboardPage() {
 
         {/* ── Section: CV Templates ── */}
         <section id="templates">
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <p className="text-xs font-mono tracking-[0.3em] uppercase text-violet-light/60 mb-1.5">CV Templates</p>
-              <h2 className="text-xl font-display font-bold tracking-tight">Your CV template</h2>
-              <p className="text-sm text-muted-foreground mt-1">Fitex tailors your CV to each job using this template.</p>
-            </div>
-            {template && templateView === 'idle' && (
-              <button
-                onClick={openAdd}
-                className="inline-flex items-center gap-2 text-sm font-medium bg-violet/10 hover:bg-violet/20 text-violet-light border border-violet/20 hover:border-violet/40 px-4 py-2 rounded-lg transition-all duration-200"
-              >
-                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 4v16m-8-8h16" strokeLinecap="round" />
-                </svg>
-                Replace template
-              </button>
-            )}
+          <div className="mb-6">
+            <p className="text-xs font-mono tracking-[0.3em] uppercase text-violet-light/60 mb-1.5">CV Templates</p>
+            <h2 className="text-xl font-display font-bold tracking-tight">Your CV template</h2>
+            <p className="text-sm text-muted-foreground mt-1">Fitex tailors your CV to each job using this template.</p>
           </div>
 
-          <div className="rounded-2xl border border-border/40 bg-card/30 backdrop-blur-sm overflow-hidden">
-
-            {/* ── Idle: show template or empty state ── */}
-            {templateView === 'idle' && (
-              <div className="p-6">
-                {templateLoading ? (
-                  <div className="flex items-center gap-3 text-muted-foreground py-4">
-                    <div className="h-4 w-4 rounded-full border-2 border-violet border-t-transparent animate-spin" />
-                    <span className="text-sm">Loading template…</span>
-                  </div>
-                ) : template ? (
-                  <>
-                    <TemplateCard
-                      template={template}
-                      onEdit={startEdit}
-                      onDelete={() => setTemplateView('delete-confirm')}
-                      onGenerate={generatePdf}
-                      generating={pdfGenerating}
-                    />
-                    {pdfError && (
-                      <p className="mt-3 text-xs text-destructive">{pdfError}</p>
-                    )}
-                    {pdfBlobUrl && (
-                      <div className="mt-4 rounded-xl overflow-hidden border border-border/40 bg-surface/40">
-                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/30 bg-surface-raised/40">
-                          <span className="text-xs font-medium text-muted-foreground">CV Preview</span>
-                          <a
-                            href={pdfBlobUrl}
-                            download="cv.pdf"
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-light/80 hover:text-violet-light px-2.5 py-1 rounded-lg hover:bg-violet/10 transition-all duration-200"
-                          >
-                            <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth="2">
-                              <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                            Download
-                          </a>
-                        </div>
-                        <iframe
-                          src={`${pdfBlobUrl}#toolbar=0`}
-                          className="w-full h-[700px]"
-                          title="CV Preview"
-                        />
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  /* Empty state */
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
+          {/* ── Idle: show template or empty state ── */}
+          {templateView === 'idle' && (
+            <>
+              {templateLoading ? (
+                <div className="flex items-center gap-3 text-muted-foreground py-4">
+                  <div className="h-4 w-4 rounded-full border-2 border-violet border-t-transparent animate-spin" />
+                  <span className="text-sm">Loading template…</span>
+                </div>
+              ) : template ? (
+                <TemplateCard
+                  template={template}
+                  pdfBlobUrl={pdfBlobUrl}
+                  pdfGenerating={pdfGenerating}
+                  pdfError={pdfError}
+                  onReplace={openAdd}
+                  onRetry={() => generatePdf(template)}
+                />
+              ) : (
+                /* Empty state */
+                <div className="rounded-2xl border border-border/40 bg-card/30 backdrop-blur-sm p-12">
+                  <div className="flex flex-col items-center justify-center text-center">
                     <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-violet/10 text-violet-light mb-4">
                       <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7" stroke="currentColor" strokeWidth="1.5">
                         <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" />
@@ -766,12 +959,14 @@ export default function DashboardPage() {
                       Upload template
                     </button>
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </>
+          )}
 
-            {/* ── Add / Replace template ── */}
-            {templateView === 'add' && (
+          {/* ── Add / Replace template ── */}
+          {templateView === 'add' && (
+            <div className="rounded-2xl border border-border/40 bg-card/30 backdrop-blur-sm overflow-hidden">
               <div className="p-6 space-y-5">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-foreground">{template ? 'Replace template' : 'Upload template'}</h3>
@@ -795,9 +990,9 @@ export default function DashboardPage() {
                     Import from PDF
                   </button>
                   <button
-                    onClick={() => { setAddTab('upload'); setAddTex(''); setAddFilename(''); }}
+                    onClick={() => { setAddTab('tex'); setAddTex(''); setAddFilename(''); }}
                     className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
-                      addTab === 'upload'
+                      addTab === 'tex'
                         ? 'bg-violet/15 text-violet-light border border-violet/20'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
@@ -806,18 +1001,16 @@ export default function DashboardPage() {
                   </button>
                 </div>
 
-                {/* Upload .tex tab */}
-                {addTab === 'upload' && (
-                  <TexDropzoneInline
-                    onFile={(tex, fname) => { setAddTex(tex); setAddFilename(fname); }}
-                  />
-                )}
-
-                {/* Import from PDF tab */}
                 {addTab === 'pdf' && (
                   <PdfImportInline
                     usage={pdfUsage}
                     onConverted={(tex, fname) => { setAddTex(tex); setAddFilename(fname); }}
+                  />
+                )}
+
+                {addTab === 'tex' && (
+                  <TexDropzoneInline
+                    onFile={(tex, fname) => { setAddTex(tex); setAddFilename(fname); }}
                   />
                 )}
 
@@ -833,9 +1026,6 @@ export default function DashboardPage() {
                         className="w-full rounded-lg bg-surface border border-border/40 focus:border-violet/60 outline-none px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 transition-colors duration-200"
                       />
                     </div>
-                    <pre className="rounded-lg bg-surface p-3 text-xs font-mono text-muted-foreground/70 overflow-auto max-h-32 border border-border/30 whitespace-pre-wrap">
-                      {addTex.slice(0, 300)}{addTex.length > 300 ? '\n…' : ''}
-                    </pre>
                     {templateError && <p className="text-xs text-destructive">{templateError}</p>}
                     <button
                       onClick={saveAdd}
@@ -847,195 +1037,8 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
-            )}
-
-            {/* ── Edit template ── */}
-            {templateView === 'edit' && (
-              <div className="p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-foreground">Edit template</h3>
-                  <button onClick={() => setTemplateView('idle')} className="text-muted-foreground hover:text-foreground transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="2">
-                      <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" />
-                    </svg>
-                  </button>
-                </div>
-
-                <div>
-                  <label className="text-xs text-muted-foreground font-medium block mb-1.5">Filename</label>
-                  <input
-                    type="text"
-                    value={editFilename}
-                    onChange={(e) => setEditFilename(e.target.value)}
-                    placeholder="my-cv.tex"
-                    className="w-full rounded-lg bg-surface border border-border/40 focus:border-violet/60 outline-none px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 transition-colors duration-200"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs text-muted-foreground font-medium block mb-1.5">CV source</label>
-                  <textarea
-                    value={editTex}
-                    onChange={(e) => setEditTex(e.target.value)}
-                    rows={14}
-                    spellCheck={false}
-                    className="w-full rounded-lg bg-surface border border-border/40 focus:border-violet/60 outline-none px-3 py-2.5 text-xs font-mono text-foreground/90 resize-y transition-colors duration-200"
-                  />
-                </div>
-
-                {templateError && <p className="text-xs text-destructive">{templateError}</p>}
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setTemplateView('idle')}
-                    className="flex-1 rounded-lg border border-border/40 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:border-border/70 transition-all duration-200"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={saveEdit}
-                    disabled={saving || !editTex.trim()}
-                    className="flex-1 rounded-lg bg-violet py-2.5 text-sm font-semibold text-white hover:bg-violet-dark transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {saving ? 'Saving…' : 'Save changes'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── Delete confirmation ── */}
-            {templateView === 'delete-confirm' && (
-              <div className="p-6 space-y-4">
-                <div className="flex items-start gap-4">
-                  <div className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-red-500/10 text-red-400 shrink-0 mt-0.5">
-                    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.5">
-                      <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground mb-1">Delete template?</h3>
-                    <p className="text-sm text-muted-foreground">
-                      This will remove your CV template. Fitex won't be able to generate tailored CVs until you upload a new one.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setTemplateView('idle')}
-                    className="flex-1 rounded-lg border border-border/40 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:border-border/70 transition-all duration-200"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={confirmDelete}
-                    className="flex-1 rounded-lg bg-red-500/80 hover:bg-red-500 py-2.5 text-sm font-semibold text-white transition-all duration-200"
-                  >
-                    Delete template
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* ── Section divider ── */}
-        <div className="h-px w-full bg-gradient-to-r from-transparent via-border/40 to-transparent" />
-
-        {/* ── Section: Security ── */}
-        <section id="security">
-          <div className="mb-6">
-            <p className="text-xs font-mono tracking-[0.3em] uppercase text-violet-light/60 mb-1.5">Account</p>
-            <h2 className="text-xl font-display font-bold tracking-tight">Security</h2>
-          </div>
-
-          <div className="rounded-2xl border border-border/40 bg-card/30 backdrop-blur-sm overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-start gap-4 mb-6">
-                <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-emerald/10 text-emerald shrink-0">
-                  <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">Two-factor authentication</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Add an extra layer of security to your account using an authenticator app.</p>
-                </div>
-              </div>
-
-              {!totpURI && !showPasswordPrompt && (
-                <button
-                  onClick={() => setShowPasswordPrompt(true)}
-                  className="inline-flex items-center gap-2 text-sm font-medium bg-emerald/10 hover:bg-emerald/20 text-emerald border border-emerald/20 hover:border-emerald/40 px-4 py-2.5 rounded-lg transition-all duration-200"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 4v16m-8-8h16" strokeLinecap="round" />
-                  </svg>
-                  Enable 2FA
-                </button>
-              )}
-
-              {showPasswordPrompt && !totpURI && (
-                <form onSubmit={handleEnable2FA} className="flex flex-col gap-3 max-w-sm">
-                  <div>
-                    <Label htmlFor="twofa-password" className="text-xs text-muted-foreground">Confirm your password</Label>
-                    <Input
-                      id="twofa-password"
-                      type="password"
-                      placeholder="Your account password"
-                      value={twoFAPassword}
-                      onChange={(e) => setTwoFAPassword(e.target.value)}
-                      required
-                      className="mt-1.5"
-                    />
-                  </div>
-                  <Button type="submit" className="bg-violet hover:bg-violet-dark text-white w-fit">
-                    Continue
-                  </Button>
-                </form>
-              )}
-
-              {totpURI && (
-                <div className="space-y-4 max-w-sm">
-                  <p className="text-sm text-muted-foreground">
-                    Scan this QR code with your authenticator app, then enter the 6-digit code below:
-                  </p>
-                  <code className="block break-all rounded-lg bg-surface p-3 text-xs font-mono text-muted-foreground/70 border border-border/30">
-                    {totpURI}
-                  </code>
-                  <form onSubmit={handleVerify2FA} className="flex flex-col gap-3">
-                    <div>
-                      <Label htmlFor="verify-code" className="text-xs text-muted-foreground">Verification code</Label>
-                      <Input
-                        id="verify-code"
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]{6}"
-                        maxLength={6}
-                        placeholder="000000"
-                        value={verifyCode}
-                        onChange={(e) => setVerifyCode(e.target.value)}
-                        required
-                        className="mt-1.5 font-mono tracking-widest text-center"
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      disabled={verifyCode.length !== 6}
-                      className="bg-violet hover:bg-violet-dark text-white w-fit"
-                    >
-                      Verify & activate
-                    </Button>
-                  </form>
-                </div>
-              )}
-
-              {twoFAStatus && (
-                <p className={`text-sm mt-3 ${twoFAStatus.includes('successfully') ? 'text-emerald' : 'text-muted-foreground'}`}>
-                  {twoFAStatus}
-                </p>
-              )}
             </div>
-          </div>
+          )}
         </section>
 
         {/* ── Footer ── */}

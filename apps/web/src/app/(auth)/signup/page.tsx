@@ -7,6 +7,7 @@ import { signIn, signUp } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toast } from '@/components/ui/sonner';
 
 const GoogleIcon = () => (
   <svg className="mr-2 size-4 shrink-0" viewBox="0 0 24 24">
@@ -23,16 +24,14 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (password !== confirm) {
-      setError('Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
-    setError('');
     setLoading(true);
 
     const { error: signUpError } = await signUp.email({ name, email, password });
@@ -40,7 +39,7 @@ export default function SignUpPage() {
     setLoading(false);
 
     if (signUpError) {
-      setError(signUpError.message ?? 'Could not create account');
+      toast.error(signUpError.message ?? 'Could not create account');
       return;
     }
 
@@ -163,12 +162,6 @@ export default function SignUpPage() {
             className="h-10 bg-surface/60 border-border/50 focus-visible:border-violet/60 focus-visible:ring-violet/20"
           />
         </div>
-
-        {error && (
-          <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error}
-          </p>
-        )}
 
         <Button
           type="submit"
