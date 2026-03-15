@@ -5,6 +5,7 @@ import {
   Body,
   Req,
   Res,
+  Param,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -58,9 +59,22 @@ export class CvController {
     res.send(pdf);
   }
 
+  @Post('analyze-ats')
+  async analyzeAts(@Body() body: { jobDescription: string }, @Req() req: any) {
+    if (!body.jobDescription)
+      throw new BadRequestException('jobDescription is required');
+    return this.cvService.analyzeAts(req.user.id, body.jobDescription);
+  }
+
   @Post('tailor')
   async tailorCv(
-    @Body() body: { jobDescription: string; adjustmentComment?: string },
+    @Body()
+    body: {
+      jobDescription: string;
+      adjustmentComment?: string;
+      atsKeywords?: string[];
+      storyIds?: string[];
+    },
     @Req() req: any,
   ) {
     if (!body.jobDescription)
@@ -69,7 +83,32 @@ export class CvController {
       req.user.id,
       body.jobDescription,
       body.adjustmentComment,
+      body.atsKeywords,
+      body.storyIds,
     );
+  }
+
+  @Get('history')
+  async listHistory(@Req() req: any) {
+    return this.cvService.listHistory(req.user.id);
+  }
+
+  @Get('history/:id')
+  async getHistoryEntry(@Req() req: any, @Param('id') id: string) {
+    return this.cvService.getHistoryEntry(req.user.id, id);
+  }
+
+  @Get('history/:id/pdf')
+  async getHistoryPdf(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const entry = await this.cvService.getHistoryEntry(req.user.id, id);
+    const pdf = await this.cvService.compileRawWithImages(entry.tex, req.user.id);
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', 'inline; filename="cv.pdf"');
+    res.send(pdf);
   }
 
   @Post('compile-raw')

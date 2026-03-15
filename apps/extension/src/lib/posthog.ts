@@ -13,6 +13,7 @@ export function initPostHog() {
     person_profiles: 'identified_only',
     capture_pageview: false,
     persistence: 'localStorage',
+    disable_external_dependency_loading: true,
   });
 
   initialized = true;

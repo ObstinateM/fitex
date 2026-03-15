@@ -8,6 +8,7 @@ import {
   Param,
   Req,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard.js';
@@ -64,6 +65,19 @@ export class StoryController {
   @Post('import')
   import(@Body() body: { rawText: string }) {
     return this.storyService.importText(body.rawText);
+  }
+
+  @Post('answer-question')
+  answerQuestion(
+    @Req() req: Request,
+    @Body() body: { question: string; jobDescription?: string },
+  ) {
+    if (!body.question) throw new BadRequestException('question is required');
+    return this.storyService.answerQuestion(
+      (req as any).user.id,
+      body.question,
+      body.jobDescription,
+    );
   }
 
   @Post('filter')

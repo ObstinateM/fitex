@@ -643,6 +643,18 @@ export default function DashboardPage() {
           </Link>
 
           <div className="flex items-center gap-3">
+            <Link
+              href="/stories"
+              className="text-sm text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg hover:bg-muted/50 transition-all duration-200 cursor-pointer"
+            >
+              Stories
+            </Link>
+            <Link
+              href="/history"
+              className="text-sm text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg hover:bg-muted/50 transition-all duration-200 cursor-pointer"
+            >
+              History
+            </Link>
             {process.env.NODE_ENV === 'development' && (
               <Link
                 href="/debug"

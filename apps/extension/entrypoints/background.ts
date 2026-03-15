@@ -6,19 +6,20 @@ const TOKEN_KEY = 'fitex_session_token';
 export default defineBackground(() => {
   const processedTabs = new Set<number>();
 
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+
   chrome.runtime.onMessage.addListener((message) => {
     if (message.action === 'SELECTION_COMPLETE') {
-      chrome.storage.local.set({
-        selectedJobDescription: message.text,
-        selectorActive: false,
-      });
+      chrome.storage.local.set({ pendingSelection: message.text, selectorActive: false });
     }
   });
 
   chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    const url = changeInfo.url ?? tab.url;
+    const isComplete = changeInfo.status === 'complete' || changeInfo.url;
     if (
-      changeInfo.status !== 'complete' ||
-      !tab.url?.startsWith(CALLBACK_URL) ||
+      !isComplete ||
+      !url?.startsWith(CALLBACK_URL) ||
       processedTabs.has(tabId)
     ) {
       return;
@@ -27,8 +28,8 @@ export default defineBackground(() => {
     processedTabs.add(tabId);
 
     try {
-      const url = new URL(tab.url);
-      const token = url.searchParams.get('token');
+      const parsed = new URL(url!);
+      const token = parsed.searchParams.get('token');
       if (!token) return;
 
       const res = await fetch(

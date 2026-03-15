@@ -161,6 +161,20 @@ export const payment = pgTable('payment', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
+export const generationHistory = pgTable('generation_history', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  jobDescription: text('job_description').notNull(),
+  atsKeywords: text('ats_keywords').notNull().default('[]'),
+  storyIds: text('story_ids').notNull().default('[]'),
+  tex: text('tex').notNull(),
+  adjustmentComment: text('adjustment_comment'),
+  matchScore: integer('match_score'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
 export const subscription = pgTable('subscription', {
   id: text('id').primaryKey(),
   userId: text('user_id')

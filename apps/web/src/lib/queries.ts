@@ -10,6 +10,7 @@ export const queryKeys = {
   billingData: ['billing-data'] as const,
   stories: ['stories'] as const,
   images: ['images'] as const,
+  generationHistory: ['generation-history'] as const,
 };
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -65,6 +66,20 @@ export interface CvImage {
   label: string | null;
   url: string;
   createdAt: string;
+}
+
+export interface GenerationHistoryEntry {
+  id: string;
+  jobDescription: string;
+  atsKeywords: string[];
+  storyIds: string[];
+  matchScore: number | null;
+  adjustmentComment: string | null;
+  createdAt: string;
+}
+
+export interface GenerationHistoryEntryFull extends GenerationHistoryEntry {
+  tex: string;
 }
 
 // ─── Query Hooks ─────────────────────────────────────────────────────────────
@@ -144,6 +159,29 @@ export function useImages() {
       if (!res.ok) return [];
       return res.json();
     },
+  });
+}
+
+export function useGenerationHistory() {
+  return useQuery({
+    queryKey: queryKeys.generationHistory,
+    queryFn: async (): Promise<GenerationHistoryEntry[]> => {
+      const res = await authedFetch('/cv/history');
+      if (!res.ok) throw new Error('Failed to fetch generation history');
+      return res.json();
+    },
+  });
+}
+
+export function useGenerationHistoryEntry(id: string | null) {
+  return useQuery({
+    queryKey: [...queryKeys.generationHistory, id],
+    queryFn: async (): Promise<GenerationHistoryEntryFull> => {
+      const res = await authedFetch(`/cv/history/${id}`);
+      if (!res.ok) throw new Error('Failed to fetch history entry');
+      return res.json();
+    },
+    enabled: !!id,
   });
 }
 
