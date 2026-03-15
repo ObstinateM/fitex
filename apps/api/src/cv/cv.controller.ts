@@ -60,11 +60,14 @@ export class CvController {
 
   @Post('compile-raw')
   async compileRaw(
-    @Body() body: { tex: string },
+    @Body() body: { tex: string; includeImages?: boolean },
+    @Req() req: any,
     @Res() res: Response,
   ) {
     if (!body.tex) throw new BadRequestException('tex is required');
-    const pdf = await this.cvService.compileRaw(body.tex);
+    const pdf = body.includeImages
+      ? await this.cvService.compileRawWithImages(body.tex, req.user.id)
+      : await this.cvService.compileRaw(body.tex);
     res.set('Content-Type', 'application/pdf');
     res.set('Content-Disposition', 'inline; filename="cv.pdf"');
     res.send(pdf);

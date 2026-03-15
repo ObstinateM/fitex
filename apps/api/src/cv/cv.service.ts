@@ -9,12 +9,16 @@ import { eq, and, gte, count } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { cvTemplate, pdfConversionLog, user } from '../db/schema.js';
 import { AIService } from '../ai/ai.service.js';
+import { ImageService } from '../image/image.service.js';
 
 const PDF_CONVERSION_LIMIT = 5;
 
 @Injectable()
 export class CvService {
-  constructor(private readonly aiService: AIService) {}
+  constructor(
+    private readonly aiService: AIService,
+    private readonly imageService: ImageService,
+  ) {}
 
   async getPdfUsage(userId: string): Promise<{ used: number; limit: number }> {
     const startOfMonth = new Date();
@@ -101,16 +105,30 @@ export class CvService {
     };
   }
 
-  async compileLatex(tex: string): Promise<Buffer> {
+  async compileLatex(
+    tex: string,
+    images: { filename: string; buffer: Buffer }[] = [],
+  ): Promise<Buffer> {
     const latexApiUrl =
       process.env.LATEX_API_URL ?? 'https://latex.ytotech.com/builds/sync';
+
+    const resources: Record<string, unknown>[] = [
+      { main: true, content: tex },
+    ];
+
+    for (const img of images) {
+      resources.push({
+        path: img.filename,
+        file: img.buffer.toString('base64'),
+      });
+    }
 
     const response = await fetch(latexApiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         compiler: 'pdflatex',
-        resources: [{ main: true, content: tex }],
+        resources,
       }),
     });
 
@@ -128,10 +146,16 @@ export class CvService {
 
   async compileTemplate(userId: string): Promise<Buffer> {
     const template = await this.getTemplate(userId);
-    return this.compileLatex(template.tex);
+    const images = await this.imageService.getImagesForCompilation(userId);
+    return this.compileLatex(template.tex, images);
   }
 
   async compileRaw(tex: string): Promise<Buffer> {
     return this.compileLatex(tex);
+  }
+
+  async compileRawWithImages(tex: string, userId: string): Promise<Buffer> {
+    const images = await this.imageService.getImagesForCompilation(userId);
+    return this.compileLatex(tex, images);
   }
 }
