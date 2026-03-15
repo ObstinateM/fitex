@@ -1,26 +1,33 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'motion/react';
 import { LatexDropzone } from './LatexDropzone';
 import { PDFConverter } from './PDFConverter';
-import { authedFetch } from '@/lib/api-client';
+import { ImageManager } from '@/components/image-manager';
+import { useCompileRaw, useSaveTemplate } from '@/lib/queries';
 
 type Tab = 'latex' | 'pdf';
 
 export function TemplateUpload() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackURL = searchParams.get('callbackURL') || '/dashboard';
   const [activeTab, setActiveTab] = useState<Tab>('pdf');
   const [tex, setTex] = useState<string | null>(null);
   const [filename, setFilename] = useState<string | undefined>();
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [compilingPreview, setCompilingPreview] = useState(false);
   const [previewError, setPreviewError] = useState('');
   const blobUrlRef = useRef<string | null>(null);
+  const previewSeqRef = useRef(0);
+
+  const compileRaw = useCompileRaw();
+  const saveTemplateMutation = useSaveTemplate();
+  const saving = saveTemplateMutation.isPending;
 
   function switchTab(tab: Tab) {
     setActiveTab(tab);
@@ -29,8 +36,8 @@ export function TemplateUpload() {
     setError('');
   }
 
-  useEffect(() => {
-    if (!tex) {
+  function compilePreview(texContent: string) {
+    if (!texContent) {
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
         blobUrlRef.current = null;
@@ -39,7 +46,7 @@ export function TemplateUpload() {
       return;
     }
 
-    let cancelled = false;
+    const seq = ++previewSeqRef.current;
     setCompilingPreview(true);
     setPreviewError('');
 
@@ -49,32 +56,25 @@ export function TemplateUpload() {
       setPdfBlobUrl(null);
     }
 
-    authedFetch('/cv/compile-raw', {
-      method: 'POST',
-      body: JSON.stringify({ tex }),
-    })
-      .then(async (res) => {
-        if (cancelled) return;
-        if (!res.ok) {
-          setPreviewError('Could not generate preview. The template may have LaTeX errors.');
-          return;
-        }
-        const blob = await res.blob();
-        if (cancelled) return;
+    compileRaw
+      .mutateAsync({ tex: texContent, includeImages: true })
+      .then((blob) => {
+        if (seq !== previewSeqRef.current) return;
         const url = URL.createObjectURL(blob);
         blobUrlRef.current = url;
         setPdfBlobUrl(url);
       })
       .catch(() => {
-        if (!cancelled) setPreviewError('Network error generating preview.');
+        if (seq === previewSeqRef.current)
+          setPreviewError('Could not generate preview. The template may have LaTeX errors.');
       })
       .finally(() => {
-        if (!cancelled) setCompilingPreview(false);
+        if (seq === previewSeqRef.current) setCompilingPreview(false);
       });
+  }
 
-    return () => {
-      cancelled = true;
-    };
+  useEffect(() => {
+    compilePreview(tex ?? '');
   }, [tex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -85,25 +85,13 @@ export function TemplateUpload() {
 
   async function handleConfirm() {
     if (!tex) return;
-    setSaving(true);
     setError('');
 
     try {
-      const res = await authedFetch('/cv/template', {
-        method: 'POST',
-        body: JSON.stringify({ tex, filename }),
-      });
-
-      if (!res.ok) {
-        setError('Failed to save template. Please try again.');
-        return;
-      }
-
-      router.push('/dashboard');
+      await saveTemplateMutation.mutateAsync({ tex, filename });
+      router.push(callbackURL);
     } catch {
-      setError('Network error. Please try again.');
-    } finally {
-      setSaving(false);
+      setError('Failed to save template. Please try again.');
     }
   }
 
@@ -177,6 +165,17 @@ export function TemplateUpload() {
               />
             </div>
           )}
+        </motion.div>
+      )}
+
+      {/* Image upload (optional) */}
+      {tex && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="overflow-hidden"
+        >
+          <ImageManager compact onImagesChange={() => tex && compilePreview(tex)} />
         </motion.div>
       )}
 

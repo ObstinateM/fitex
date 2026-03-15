@@ -54,6 +54,22 @@ export default function DebugPage() {
             <div className="font-medium">Reset PDF quota</div>
             <div className="text-xs text-muted-foreground mt-0.5">Clears this month&apos;s conversion log</div>
           </button>
+
+          <button
+            onClick={() => handleAction('add-credits', '10 credits added')}
+            className="w-full rounded-lg border border-border/50 bg-card px-4 py-3 text-sm text-left hover:bg-accent transition-colors"
+          >
+            <div className="font-medium">Add 10 credits</div>
+            <div className="text-xs text-muted-foreground mt-0.5">Fake payment with history record (productType=debug)</div>
+          </button>
+
+          <button
+            onClick={() => handleAction('expire-subscription', 'Subscription expired')}
+            className="w-full rounded-lg border border-border/50 bg-card px-4 py-3 text-sm text-left hover:bg-accent transition-colors"
+          >
+            <div className="font-medium">Expire subscription</div>
+            <div className="text-xs text-muted-foreground mt-0.5">Sets subscription status to canceled, period end to now</div>
+          </button>
         </div>
 
         {status && (

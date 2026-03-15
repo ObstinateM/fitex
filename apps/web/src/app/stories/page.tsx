@@ -1,22 +1,22 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { authedFetch } from '@/lib/api-client';
+import { useState, useMemo } from 'react';
+import {
+  useStories,
+  useAddStory,
+  useUpdateStory,
+  useDeleteStory,
+  useEnhanceStory,
+  useParseImport,
+  useBulkImportStories,
+  type Story,
+} from '@/lib/queries';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/sonner';
 import Link from 'next/link';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-
-interface Story {
-  id: string;
-  title: string;
-  description: string;
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
-}
 
 interface ParsedStory {
   title: string;
@@ -161,8 +161,14 @@ function parseTags(input: string): string[] {
 type ImportPhase = 'idle' | 'input' | 'review' | 'success';
 
 export default function StoriesPage() {
-  const [stories, setStories] = useState<Story[]>([]);
-  const [loading, setLoading] = useState(true);
+  // ─── TanStack Query ───────────────────────────────────────────────────────
+  const { data: stories = [], isPending: loading } = useStories();
+  const addMutation = useAddStory();
+  const updateMutation = useUpdateStory();
+  const deleteMutation = useDeleteStory();
+  const enhanceMutation = useEnhanceStory();
+  const parseMutation = useParseImport();
+  const bulkImportMutation = useBulkImportStories();
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -173,7 +179,6 @@ export default function StoriesPage() {
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newTags, setNewTags] = useState('');
-  const [enhancingNew, setEnhancingNew] = useState(false);
 
   // Expand / Edit / Delete
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -181,8 +186,11 @@ export default function StoriesPage() {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editTags, setEditTags] = useState('');
-  const [enhancingId, setEnhancingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Derive loading indicators from mutation state
+  const enhancingNew = enhanceMutation.isPending && editingId === null;
+  const enhancingId = enhanceMutation.isPending && editingId !== null ? editingId : null;
 
   // Import
   const [importPhase, setImportPhase] = useState<ImportPhase>('idle');
@@ -192,7 +200,8 @@ export default function StoriesPage() {
   const [importWarnings, setImportWarnings] = useState<
     Map<number, SimilarityWarning>
   >(new Map());
-  const [parsing, setParsing] = useState(false);
+
+  const parsing = parseMutation.isPending;
 
   // ─── Derived state ───────────────────────────────────────────────────────
 
@@ -244,118 +253,75 @@ export default function StoriesPage() {
     });
   }
 
-  // ─── Fetch ───────────────────────────────────────────────────────────────
-
-  const fetchStories = useCallback(async () => {
-    try {
-      const res = await authedFetch('/stories');
-      if (res.ok) setStories(await res.json());
-    } catch {
-      /* ignore */
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchStories();
-  }, [fetchStories]);
-
   // ─── CRUD ────────────────────────────────────────────────────────────────
 
   async function addStory() {
     if (!newTitle.trim()) return;
-    const res = await authedFetch('/stories', {
-      method: 'POST',
-      body: JSON.stringify({
+    try {
+      await addMutation.mutateAsync({
         title: newTitle.trim(),
         description: newDescription.trim(),
         tags: parseTags(newTags),
-      }),
-    });
-    if (!res.ok) {
+      });
+      setNewTitle('');
+      setNewDescription('');
+      setNewTags('');
+      setShowAdd(false);
+    } catch {
       toast.error('Failed to add story');
-      return;
     }
-    const created: Story = await res.json();
-    setStories((prev) => [created, ...prev]);
-    setNewTitle('');
-    setNewDescription('');
-    setNewTags('');
-    setShowAdd(false);
   }
 
   async function saveEdit(id: string) {
-    const res = await authedFetch(`/stories/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify({
+    try {
+      await updateMutation.mutateAsync({
+        id,
         title: editTitle.trim(),
         description: editDescription.trim(),
         tags: parseTags(editTags),
-      }),
-    });
-    if (!res.ok) {
+      });
+      setEditingId(null);
+    } catch {
       toast.error('Failed to update story');
-      return;
     }
-    const updated: Story = await res.json();
-    setStories((prev) => prev.map((s) => (s.id === id ? updated : s)));
-    setEditingId(null);
   }
 
   async function deleteStory(id: string) {
-    const res = await authedFetch(`/stories/${id}`, { method: 'DELETE' });
-    if (!res.ok) {
+    try {
+      await deleteMutation.mutateAsync(id);
+      setDeletingId(null);
+    } catch {
       toast.error('Failed to delete story');
-      return;
     }
-    setStories((prev) => prev.filter((s) => s.id !== id));
-    setDeletingId(null);
   }
 
   // ─── Enhance ─────────────────────────────────────────────────────────────
 
   async function enhanceNew() {
     if (!newDescription.trim()) return;
-    setEnhancingNew(true);
     try {
-      const res = await authedFetch('/stories/enhance', {
-        method: 'POST',
-        body: JSON.stringify({
-          title: newTitle,
-          description: newDescription,
-        }),
+      const data = await enhanceMutation.mutateAsync({
+        title: newTitle,
+        description: newDescription,
       });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
       setNewDescription(data.description);
       setNewTags(data.tags.join(', '));
     } catch {
       toast.error('Enhancement failed. Please try again.');
-    } finally {
-      setEnhancingNew(false);
     }
   }
 
   async function enhanceEdit(id: string) {
     if (!editDescription.trim()) return;
-    setEnhancingId(id);
     try {
-      const res = await authedFetch('/stories/enhance', {
-        method: 'POST',
-        body: JSON.stringify({
-          title: editTitle,
-          description: editDescription,
-        }),
+      const data = await enhanceMutation.mutateAsync({
+        title: editTitle,
+        description: editDescription,
       });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
       setEditDescription(data.description);
       setEditTags(data.tags.join(', '));
     } catch {
       toast.error('Enhancement failed. Please try again.');
-    } finally {
-      setEnhancingId(null);
     }
   }
 
@@ -363,14 +329,8 @@ export default function StoriesPage() {
 
   async function parseImport() {
     if (!importText.trim()) return;
-    setParsing(true);
     try {
-      const res = await authedFetch('/stories/import', {
-        method: 'POST',
-        body: JSON.stringify({ rawText: importText }),
-      });
-      if (!res.ok) throw new Error();
-      const parsed: ParsedStory[] = await res.json();
+      const parsed = await parseMutation.mutateAsync(importText);
       if (!parsed.length) {
         toast.warning('No stories could be parsed from the text. Try providing more detail about your experiences.');
         return;
@@ -387,8 +347,6 @@ export default function StoriesPage() {
       setImportPhase('review');
     } catch {
       toast.error('Failed to parse text. Please try again.');
-    } finally {
-      setParsing(false);
     }
   }
 
@@ -396,11 +354,7 @@ export default function StoriesPage() {
     const selected = parsedStories.filter((_, i) => importChecked.has(i));
     if (!selected.length) return;
     try {
-      const res = await authedFetch('/stories/bulk', {
-        method: 'POST',
-        body: JSON.stringify({ stories: selected }),
-      });
-      if (!res.ok) throw new Error();
+      await bulkImportMutation.mutateAsync(selected);
       setImportPhase('success');
       setTimeout(() => {
         setImportPhase('idle');
@@ -408,7 +362,6 @@ export default function StoriesPage() {
         setParsedStories([]);
         setImportChecked(new Set());
         setImportWarnings(new Map());
-        fetchStories();
       }, 1200);
     } catch {
       toast.error('Failed to import stories.');

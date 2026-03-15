@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, signUp } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,8 @@ const GoogleIcon = () => (
 
 export default function SignUpPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackURL = searchParams.get('callbackURL') || '/dashboard';
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,11 +45,11 @@ export default function SignUpPage() {
       return;
     }
 
-    router.push('/dashboard');
+    router.push(callbackURL);
   }
 
   async function handleGoogle() {
-    await signIn.social({ provider: 'google', callbackURL: '/dashboard' });
+    await signIn.social({ provider: 'google', callbackURL });
   }
 
   return (

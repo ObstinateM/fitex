@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AnimateIn } from './animate-in';
+import Link from 'next/link';
 
 const plans = [
   {
@@ -10,10 +11,10 @@ const plans = [
     price: 0,
     suffix: '',
     badge: 'No card needed',
-    subtitle: '3 credits included',
+    subtitle: '2 credits included',
     description: 'Try it — no strings attached.',
     features: [
-      '3 tailored CVs',
+      '2 tailored CVs',
       'ATS keyword analysis',
       'PDF export',
       'Q&A generation',
@@ -97,7 +98,7 @@ export function Pricing() {
             <span className="text-gradient">No waste.</span>
           </h2>
           <p className="text-muted-foreground mt-4 max-w-lg mx-auto">
-            Start with 3 free tailored CVs. Buy more when you need them — credits never expire.
+            Start with 2 free tailored CVs. Buy more when you need them — credits never expire.
           </p>
         </AnimateIn>
 
@@ -170,15 +171,17 @@ export function Pricing() {
                       ))}
                     </ul>
 
-                    <Button
-                      className={`w-full py-5 text-sm font-medium transition-all duration-300 ${
-                        plan.highlighted
-                          ? 'bg-violet hover:bg-violet-dark text-white glow-violet hover:scale-[1.02]'
-                          : 'bg-card border border-border/40 text-foreground hover:border-violet/30 hover:bg-card/80'
-                      }`}
-                    >
-                      {plan.cta}
-                    </Button>
+                    <Link href={plan.price === 0 ? '/signup' : `/settings/billing?checkout=${plan.name === 'Starter' ? 'starter' : plan.name === 'Pro Pack' ? 'pro' : 'unlimited'}`}>
+                      <Button
+                        className={`w-full py-5 text-sm font-medium transition-all duration-300 ${
+                          plan.highlighted
+                            ? 'bg-violet hover:bg-violet-dark text-white glow-violet hover:scale-[1.02]'
+                            : 'bg-card border border-border/40 text-foreground hover:border-violet/30 hover:bg-card/80'
+                        }`}
+                      >
+                        {plan.cta}
+                      </Button>
+                    </Link>
 
                     <p className="text-[10px] font-mono text-muted-foreground/50 text-center mt-3 tracking-wide h-4">
                       {plan.footnote}

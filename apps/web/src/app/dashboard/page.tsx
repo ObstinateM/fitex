@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut, twoFactor } from '@/lib/auth-client';
-import { authedFetch } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +10,17 @@ import { FitexLogo } from '@/components/landing/logo';
 import { QRCodeSVG } from 'qrcode.react';
 import Link from 'next/link';
 import { toast } from '@/components/ui/sonner';
+import { ImageManager } from '@/components/image-manager';
+import {
+  useTemplate,
+  usePdfUsage,
+  useCreditBalance,
+  useSaveTemplate,
+  useCompilePdf,
+  useConvertPdf,
+  type CvTemplate,
+  type PdfUsage,
+} from '@/lib/queries';
 
 // ─── PDF cache ────────────────────────────────────────────────────────────────
 // Two-layer cache: in-memory Map (fast, same JS lifetime) + sessionStorage
@@ -52,27 +62,7 @@ function savePdfToSession(key: string, blob: Blob) {
   reader.readAsDataURL(blob);
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface CvTemplate {
-  id: string;
-  tex: string;
-  filename?: string;
-  updatedAt: string;
-}
-
-interface PdfUsage {
-  used: number;
-  limit: number;
-}
-
 type TemplateView = 'idle' | 'add';
-
-// ─── Fake credits data ────────────────────────────────────────────────────────
-
-const CREDITS_USED = 3;
-const CREDITS_TOTAL = 10;
-const CREDITS_REMAINING = CREDITS_TOTAL - CREDITS_USED;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -102,15 +92,15 @@ function StatCard({
 }) {
   return (
     <div className="relative rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm p-6 flex flex-col gap-3 hover:border-violet/30 transition-all duration-300 group overflow-hidden">
-      <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl ${accent === 'violet' ? 'bg-violet/3' : 'bg-emerald/3'}`} />
-      <span className="text-xs font-mono tracking-[0.2em] uppercase text-muted-foreground/70">{label}</span>
-      <div className="flex items-end gap-2">
+      <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl pointer-events-none ${accent === 'violet' ? 'bg-violet/3' : 'bg-emerald/3'}`} />
+      <span className="relative text-xs font-mono tracking-[0.2em] uppercase text-muted-foreground/70">{label}</span>
+      <div className="relative flex items-end gap-2">
         <span className={`text-4xl font-display font-bold tracking-tight ${accent === 'violet' ? 'text-gradient' : 'text-emerald'}`}>
           {value}
         </span>
         {sub && <span className="text-sm text-muted-foreground mb-1">{sub}</span>}
       </div>
-      {children}
+      <div className="relative">{children}</div>
     </div>
   );
 }
@@ -187,48 +177,24 @@ function PdfImportInline({
   usage: PdfUsage | null;
 }) {
   const [dragging, setDragging] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [tex, setTex] = useState<string | null>(null);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const convertMutation = useConvertPdf();
 
+  const loading = convertMutation.isPending;
   const atLimit = usage !== null && usage.used >= usage.limit;
   const remaining = usage ? Math.max(0, usage.limit - usage.used) : null;
 
   async function convert(file: File) {
-    setLoading(true);
     setTex(null);
-
-    const formData = new FormData();
-    formData.append('pdf', file);
-
     try {
-      const res = await authedFetch('/cv/convert-pdf', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (res.status === 429) {
-        toast.error('Monthly limit reached (5/month).');
-        return;
-      }
-      if (res.status === 422) {
-        toast.error('Could not extract CV data. Try a different file.');
-        return;
-      }
-      if (!res.ok) {
-        toast.error('Conversion failed. Please try again.');
-        return;
-      }
-
-      const data = await res.json();
+      const data = await convertMutation.mutateAsync(file);
       setTex(data.tex);
       const baseName = file.name.replace(/\.pdf$/i, '') + '.tex';
       onConverted(data.tex, baseName);
-    } catch {
-      toast.error('Network error. Please try again.');
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Network error. Please try again.');
     }
   }
 
@@ -277,7 +243,7 @@ function PdfImportInline({
         </p>
         <button
           onClick={() => currentFile && convert(currentFile)}
-          className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
+          className="text-xs text-muted-foreground hover:text-foreground underline transition-colors cursor-pointer"
         >
           Retry extraction
         </button>
@@ -375,7 +341,7 @@ function TemplateCard({
         <div className="flex items-center gap-2">
           <button
             onClick={onReplace}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-light/80 hover:text-violet-light px-3 py-1.5 rounded-lg hover:bg-violet/10 border border-violet/20 hover:border-violet/40 transition-all duration-200"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-light/80 hover:text-violet-light px-3 py-1.5 rounded-lg hover:bg-violet/10 border border-violet/20 hover:border-violet/40 transition-all duration-200 cursor-pointer"
           >
             <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth="2">
               <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" strokeLinecap="round" strokeLinejoin="round" />
@@ -386,7 +352,7 @@ function TemplateCard({
             <a
               href={pdfBlobUrl}
               download="cv.pdf"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg hover:bg-muted/50 border border-border/30 hover:border-border/60 transition-all duration-200"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg hover:bg-muted/50 border border-border/30 hover:border-border/60 transition-all duration-200 cursor-pointer"
             >
               <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth="2">
                 <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" strokeLinecap="round" strokeLinejoin="round" />
@@ -450,7 +416,7 @@ function TemplateCard({
             <p className="text-xs text-muted-foreground mb-4">{pdfError}</p>
             <button
               onClick={onRetry}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-light px-4 py-2 rounded-lg bg-violet/10 hover:bg-violet/20 border border-violet/20 transition-all duration-200"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-light px-4 py-2 rounded-lg bg-violet/10 hover:bg-violet/20 border border-violet/20 transition-all duration-200 cursor-pointer"
             >
               Retry
             </button>
@@ -490,21 +456,26 @@ export default function DashboardPage() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
 
-  // Template state
-  const [template, setTemplate] = useState<CvTemplate | null>(null);
-  const [templateLoading, setTemplateLoading] = useState(true);
+  // TanStack Query hooks
+  const templateQuery = useTemplate(!!session);
+  const pdfUsageQuery = usePdfUsage(!!session);
+  const creditBalanceQuery = useCreditBalance(!!session);
+  const saveTemplateMutation = useSaveTemplate();
+  const compilePdfMutation = useCompilePdf();
+
+  const template = templateQuery.data ?? null;
+  const templateLoading = templateQuery.isLoading;
+  const pdfUsage = pdfUsageQuery.data ?? null;
+  const creditBalance = creditBalanceQuery.data ?? null;
+
+  // Template add/replace UI state
   const [templateView, setTemplateView] = useState<TemplateView>('idle');
   const [addTex, setAddTex] = useState('');
   const [addFilename, setAddFilename] = useState('');
   const [addTab, setAddTab] = useState<'pdf' | 'tex'>('pdf');
-  const [saving, setSaving] = useState(false);
   const [templateError, setTemplateError] = useState('');
 
-  // PDF usage state
-  const [pdfUsage, setPdfUsage] = useState<PdfUsage | null>(null);
-
   // PDF generation state
-  const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState('');
 
@@ -523,65 +494,25 @@ export default function DashboardPage() {
   // User settings panel
   const [showUserSettings, setShowUserSettings] = useState(false);
 
+  // Derived state
+  const pdfGenerating = compilePdfMutation.isPending;
+  const saving = saveTemplateMutation.isPending;
+
   // Auth redirect
   useEffect(() => {
     if (!isPending && !session) router.push('/login');
   }, [isPending, session, router]);
 
-  // Fetch template
-  const fetchTemplate = useCallback(async (): Promise<CvTemplate | null> => {
-    setTemplateLoading(true);
-    try {
-      const res = await authedFetch('/cv/template');
-      if (res.ok) {
-        const data: CvTemplate = await res.json();
-        setTemplate(data);
-        return data;
-      }
-      setTemplate(null);
-      return null;
-    } catch {
-      setTemplate(null);
-      return null;
-    } finally {
-      setTemplateLoading(false);
-    }
-  }, []);
-
-  // Fetch PDF usage
-  const fetchPdfUsage = useCallback(async () => {
-    try {
-      const res = await authedFetch('/cv/pdf-usage');
-      if (res.ok) setPdfUsage(await res.json());
-    } catch {
-      // non-critical
-    }
-  }, []);
-
-  useEffect(() => {
-    if (session) {
-      fetchTemplate();
-      fetchPdfUsage();
-    }
-  }, [session, fetchTemplate, fetchPdfUsage]);
-
   // ── PDF generation ─────────────────────────────────────────────────────────
 
-  const generatePdf = useCallback(async (templateToCache?: CvTemplate) => {
-    setPdfGenerating(true);
+  async function generatePdf(templateToCache?: CvTemplate) {
     setPdfError('');
     setPdfBlobUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return null;
     });
     try {
-      const res = await authedFetch('/cv/compile', { method: 'POST' });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setPdfError(data.message ?? 'Compilation failed. Check your LaTeX source.');
-        return;
-      }
-      const blob = await res.blob();
+      const blob = await compilePdfMutation.mutateAsync();
       const url = URL.createObjectURL(blob);
       if (templateToCache) {
         const key = pdfCacheKey(templateToCache);
@@ -589,12 +520,10 @@ export default function DashboardPage() {
         savePdfToSession(key, blob);
       }
       setPdfBlobUrl(url);
-    } catch {
-      setPdfError('Network error. Please try again.');
-    } finally {
-      setPdfGenerating(false);
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : 'Network error. Please try again.');
     }
-  }, []);
+  }
 
   // Auto-compile when template first loads (serves from cache when available)
   useEffect(() => {
@@ -615,14 +544,9 @@ export default function DashboardPage() {
 
   async function saveAdd() {
     if (!addTex.trim()) return;
-    setSaving(true);
     setTemplateError('');
     try {
-      const res = await authedFetch('/cv/template', {
-        method: 'POST',
-        body: JSON.stringify({ tex: addTex, filename: addFilename || undefined }),
-      });
-      if (!res.ok) { setTemplateError('Failed to save. Please try again.'); return; }
+      await saveTemplateMutation.mutateAsync({ tex: addTex, filename: addFilename || undefined });
 
       // Bust both cache layers so the new template always compiles fresh
       PDF_MEM_CACHE.clear();
@@ -632,17 +556,16 @@ export default function DashboardPage() {
 
       // Mark ref as handled so the auto-compile effect doesn't double-fire
       autoCompileRef.current = true;
-      const newTemplate = await fetchTemplate();
+      // Wait for the template query to refetch
+      const result = await templateQuery.refetch();
       setTemplateView('idle');
       setAddTex('');
       setAddFilename('');
 
       // Explicitly recompile with the fresh template
-      if (newTemplate) generatePdf(newTemplate);
+      if (result.data) generatePdf(result.data);
     } catch {
       setTemplateError('Network error. Please try again.');
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -652,7 +575,7 @@ export default function DashboardPage() {
     setAddFilename('');
     setAddTab('pdf');
     setTemplateError('');
-    fetchPdfUsage();
+    pdfUsageQuery.refetch();
   }
 
   // ── 2FA handlers ──────────────────────────────────────────────────────────
@@ -714,7 +637,7 @@ export default function DashboardPage() {
       {/* ── Top nav ── */}
       <header className="sticky top-0 z-40 border-b border-border/30 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto max-w-5xl flex items-center justify-between px-6 py-3">
-          <Link href="/" className="flex items-center gap-2.5" aria-label="Fitex home">
+          <Link href="/" className="flex items-center gap-2.5 cursor-pointer" aria-label="Fitex home">
             <FitexLogo className="h-8 w-8" />
             <span className="text-base font-semibold tracking-tight">Fitex</span>
           </Link>
@@ -723,21 +646,21 @@ export default function DashboardPage() {
             {process.env.NODE_ENV === 'development' && (
               <Link
                 href="/debug"
-                className="text-sm text-amber-500/70 hover:text-amber-500 px-3 py-1.5 rounded-lg hover:bg-muted/50 transition-all duration-200"
+                className="text-sm text-amber-500/70 hover:text-amber-500 px-3 py-1.5 rounded-lg hover:bg-muted/50 transition-all duration-200 cursor-pointer"
               >
                 Debug
               </Link>
             )}
             <div className="hidden sm:flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-1.5 border border-border/30">
               <div className="h-1.5 w-1.5 rounded-full bg-emerald animate-pulse" />
-              <span className="text-xs text-muted-foreground font-medium">{CREDITS_REMAINING} credits</span>
+              <span className="text-xs text-muted-foreground font-medium">{creditBalance?.isUnlimited ? 'Unlimited' : `${creditBalance?.balance ?? '—'} credits`}</span>
             </div>
             {/* User settings button */}
             <div className="relative">
               <button
                 onClick={() => setShowUserSettings((v) => !v)}
                 aria-label="User settings"
-                className={`flex items-center justify-center h-8 w-8 rounded-lg border transition-all duration-200 ${showUserSettings ? 'border-violet/50 bg-violet/10 text-violet-light' : 'border-border/40 bg-muted/30 text-muted-foreground hover:border-border/60 hover:bg-muted/50 hover:text-foreground'}`}
+                className={`flex items-center justify-center h-8 w-8 rounded-lg border transition-all duration-200 cursor-pointer ${showUserSettings ? 'border-violet/50 bg-violet/10 text-violet-light' : 'border-border/40 bg-muted/30 text-muted-foreground hover:border-border/60 hover:bg-muted/50 hover:text-foreground'}`}
               >
                 <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.5">
                   <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" strokeLinecap="round" strokeLinejoin="round" />
@@ -779,7 +702,7 @@ export default function DashboardPage() {
                           </div>
                           <button
                             onClick={() => setShowDisablePrompt(true)}
-                            className="inline-flex items-center gap-2 text-xs font-medium bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 hover:border-destructive/40 px-3 py-2 rounded-lg transition-all duration-200 w-fit"
+                            className="inline-flex items-center gap-2 text-xs font-medium bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 hover:border-destructive/40 px-3 py-2 rounded-lg transition-all duration-200 w-fit cursor-pointer"
                           >
                             <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth="2">
                               <path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" strokeLinecap="round" />
@@ -812,7 +735,7 @@ export default function DashboardPage() {
                       {!session.user.twoFactorEnabled && !totpURI && !showPasswordPrompt && (
                         <button
                           onClick={() => setShowPasswordPrompt(true)}
-                          className="inline-flex items-center gap-2 text-xs font-medium bg-emerald/10 hover:bg-emerald/20 text-emerald border border-emerald/20 hover:border-emerald/40 px-3 py-2 rounded-lg transition-all duration-200"
+                          className="inline-flex items-center gap-2 text-xs font-medium bg-emerald/10 hover:bg-emerald/20 text-emerald border border-emerald/20 hover:border-emerald/40 px-3 py-2 rounded-lg transition-all duration-200 cursor-pointer"
                         >
                           <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth="2">
                             <path d="M12 4v16m-8-8h16" strokeLinecap="round" />
@@ -852,7 +775,7 @@ export default function DashboardPage() {
                     <div className="px-5 py-3">
                       <button
                         onClick={async () => { await signOut({ fetchOptions: {} }); router.push('/login'); }}
-                        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 w-full py-1.5 rounded-lg hover:bg-muted/50 px-2 -mx-2"
+                        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 w-full py-1.5 rounded-lg hover:bg-muted/50 px-2 -mx-2 cursor-pointer"
                       >
                         <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth="1.5">
                           <path d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" strokeLinecap="round" strokeLinejoin="round" />
@@ -881,31 +804,17 @@ export default function DashboardPage() {
             <p className="text-muted-foreground mt-2 text-sm">{session.user.email}</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatCard label="Credits remaining" value={CREDITS_REMAINING} sub={`/ ${CREDITS_TOTAL}`} accent="violet">
-              <CreditBar used={CREDITS_USED} total={CREDITS_TOTAL} />
-              <a href="#" className="text-xs text-violet-light/70 hover:text-violet-light transition-colors duration-200 flex items-center gap-1 w-fit">
-                Get more credits
-                <svg viewBox="0 0 16 16" fill="none" className="h-3 w-3" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 8h10m-4-4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </a>
-            </StatCard>
-
-            <StatCard label="CVs generated" value={CREDITS_USED} sub="this month" accent="emerald">
-              <p className="text-xs text-muted-foreground/70">Avg. match rate <span className="text-emerald font-medium">94%</span></p>
-            </StatCard>
-
-            <StatCard label="Current plan" value="Starter" accent="violet">
-              <p className="text-xs text-muted-foreground/70">Renews on Apr 13, 2026</p>
-              <a href="/pricing" className="text-xs text-violet-light/70 hover:text-violet-light transition-colors duration-200 flex items-center gap-1 w-fit">
-                Upgrade plan
-                <svg viewBox="0 0 16 16" fill="none" className="h-3 w-3" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 8h10m-4-4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </a>
-            </StatCard>
-          </div>
+          <StatCard label="Credits remaining" value={creditBalance?.isUnlimited ? '∞' : (creditBalance?.balance ?? '—')} accent="violet">
+            {!creditBalance?.isUnlimited && creditBalance && (
+              <CreditBar used={0} total={creditBalance.balance} />
+            )}
+            <Link href="/settings/billing" className="text-xs text-violet-light/70 hover:text-violet-light transition-colors duration-200 flex items-center gap-1 w-fit cursor-pointer">
+              {creditBalance?.isUnlimited ? 'Manage subscription' : 'Get more credits'}
+              <svg viewBox="0 0 16 16" fill="none" className="h-3 w-3" stroke="currentColor" strokeWidth="2">
+                <path d="M3 8h10m-4-4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+          </StatCard>
         </section>
 
         {/* ── Section divider ── */}
@@ -951,7 +860,7 @@ export default function DashboardPage() {
                     </p>
                     <button
                       onClick={openAdd}
-                      className="inline-flex items-center gap-2 text-sm font-semibold bg-violet hover:bg-violet-dark text-white px-5 py-2.5 rounded-lg glow-violet transition-all duration-300 hover:scale-[1.02]"
+                      className="inline-flex items-center gap-2 text-sm font-semibold bg-violet hover:bg-violet-dark text-white px-5 py-2.5 rounded-lg glow-violet transition-all duration-300 hover:scale-[1.02] cursor-pointer"
                     >
                       <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="2">
                         <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" strokeLinecap="round" strokeLinejoin="round" />
@@ -970,7 +879,7 @@ export default function DashboardPage() {
               <div className="p-6 space-y-5">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-foreground">{template ? 'Replace template' : 'Upload template'}</h3>
-                  <button onClick={() => setTemplateView('idle')} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <button onClick={() => setTemplateView('idle')} className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                     <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="2">
                       <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" />
                     </svg>
@@ -981,7 +890,7 @@ export default function DashboardPage() {
                 <div className="flex gap-1 rounded-lg bg-surface p-1 border border-border/30">
                   <button
                     onClick={() => { setAddTab('pdf'); setAddTex(''); setAddFilename(''); }}
-                    className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
+                    className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-200 cursor-pointer ${
                       addTab === 'pdf'
                         ? 'bg-violet/15 text-violet-light border border-violet/20'
                         : 'text-muted-foreground hover:text-foreground'
@@ -991,7 +900,7 @@ export default function DashboardPage() {
                   </button>
                   <button
                     onClick={() => { setAddTab('tex'); setAddTex(''); setAddFilename(''); }}
-                    className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
+                    className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-200 cursor-pointer ${
                       addTab === 'tex'
                         ? 'bg-violet/15 text-violet-light border border-violet/20'
                         : 'text-muted-foreground hover:text-foreground'
@@ -1030,7 +939,7 @@ export default function DashboardPage() {
                     <button
                       onClick={saveAdd}
                       disabled={saving}
-                      className="w-full rounded-xl bg-violet py-3 text-sm font-semibold text-white glow-violet transition-all duration-300 hover:bg-violet-dark hover:scale-[1.01] disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="w-full rounded-xl bg-violet py-3 text-sm font-semibold text-white glow-violet transition-all duration-300 hover:bg-violet-dark hover:scale-[1.01] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {saving ? 'Saving…' : 'Save template →'}
                     </button>
@@ -1041,10 +950,29 @@ export default function DashboardPage() {
           )}
         </section>
 
+        {/* ── Section divider ── */}
+        <div className="h-px w-full bg-gradient-to-r from-transparent via-border/40 to-transparent" />
+
+        {/* ── Section: CV Images ── */}
+        <section id="images">
+          <ImageManager
+            onImagesChange={() => {
+              if (template) {
+                // Bust cache & recompile with updated images
+                PDF_MEM_CACHE.clear();
+                try { sessionStorage.removeItem(PDF_SESSION_KEY); } catch { /* ignore */ }
+                setPdfBlobUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+                setPdfError('');
+                generatePdf(template);
+              }
+            }}
+          />
+        </section>
+
         {/* ── Footer ── */}
         <footer className="pb-6 pt-2 text-center">
           <p className="text-xs text-muted-foreground/50">
-            Fitex · <a href="mailto:hello@fitex.app" className="hover:text-muted-foreground transition-colors">hello@fitex.app</a>
+            Fitex · <a href="mailto:hello@fitex.app" className="hover:text-muted-foreground transition-colors cursor-pointer">hello@fitex.app</a>
           </p>
         </footer>
 

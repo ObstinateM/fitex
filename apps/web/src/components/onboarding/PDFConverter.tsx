@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { authedFetch } from '@/lib/api-client';
+import { useConvertPdf } from '@/lib/queries';
 
 interface PDFConverterProps {
   onConverted: (tex: string) => void;
@@ -9,52 +9,32 @@ interface PDFConverterProps {
 
 export function PDFConverter({ onConverted }: PDFConverterProps) {
   const [dragging, setDragging] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [tex, setTex] = useState<string | null>(null);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
 
+  const convertMutation = useConvertPdf();
+  const loading = convertMutation.isPending;
+
   const convert = useCallback(
-    async (file: File) => {
-      setLoading(true);
+    (file: File) => {
       setError('');
       setTex(null);
-
-      const formData = new FormData();
-      formData.append('pdf', file);
-
-      try {
-        const res = await authedFetch('/cv/convert-pdf', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (res.status === 422) {
-          setError(
-            'AI could not produce valid LaTeX. Try regenerating or use a different file.',
-          );
-          return;
-        }
-
-        if (!res.ok) {
-          setError('Conversion failed. Please try again.');
-          return;
-        }
-
-        const data = await res.json();
-        setTex(data.tex);
-        onConverted(data.tex);
-      } catch {
-        setError('Network error. Please try again.');
-      } finally {
-        setLoading(false);
-      }
+      convertMutation.mutate(file, {
+        onSuccess: (data) => {
+          setTex(data.tex);
+          onConverted(data.tex);
+        },
+        onError: (err) => {
+          setError(err instanceof Error ? err.message : 'Conversion failed. Please try again.');
+        },
+      });
     },
-    [onConverted],
+    [convertMutation, onConverted],
   );
 
   const handleFile = useCallback(
-    async (file: File) => {
+    (file: File) => {
       if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
         setError('Please upload a PDF file');
         return;
@@ -64,7 +44,7 @@ export function PDFConverter({ onConverted }: PDFConverterProps) {
         return;
       }
       setCurrentFile(file);
-      await convert(file);
+      convert(file);
     },
     [convert],
   );

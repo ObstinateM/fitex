@@ -29,6 +29,9 @@ docker-compose.override.yml
 # Test coverage
 coverage/
 
+# Uploads
+uploads/
+
 # Misc
 *.log
 *.tsbuildinfo

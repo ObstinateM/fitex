@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const AUTH_PAGES = ['/login', '/signup', '/two-factor'];
-const PROTECTED_PAGES = ['/dashboard', '/onboarding'];
+const PROTECTED_PAGES = ['/dashboard', '/onboarding', '/settings'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -11,17 +11,20 @@ export async function middleware(request: NextRequest) {
   const isProtectedPage = PROTECTED_PAGES.some((p) => pathname.startsWith(p));
 
   if (isProtectedPage && !sessionToken) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('callbackURL', pathname + request.nextUrl.search);
+    return NextResponse.redirect(loginUrl);
   }
 
   if (isAuthPage && sessionToken) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    const callbackURL = request.nextUrl.searchParams.get('callbackURL');
+    return NextResponse.redirect(new URL(callbackURL || '/dashboard', request.url));
   }
 
   // For dashboard/onboarding: check isOnboarded to route correctly
   if (
     sessionToken &&
-    (pathname.startsWith('/dashboard') || pathname.startsWith('/onboarding'))
+    (pathname.startsWith('/dashboard') || pathname.startsWith('/onboarding') || pathname.startsWith('/settings'))
   ) {
     try {
       const apiUrl =
@@ -35,7 +38,14 @@ export async function middleware(request: NextRequest) {
         const isOnboarded = session?.user?.isOnboarded;
 
         if (!isOnboarded && pathname.startsWith('/dashboard')) {
-          return NextResponse.redirect(new URL('/onboarding', request.url));
+          const onboardingUrl = new URL('/onboarding', request.url);
+          return NextResponse.redirect(onboardingUrl);
+        }
+
+        if (!isOnboarded && pathname.startsWith('/settings')) {
+          const onboardingUrl = new URL('/onboarding', request.url);
+          onboardingUrl.searchParams.set('callbackURL', pathname + request.nextUrl.search);
+          return NextResponse.redirect(onboardingUrl);
         }
 
         if (isOnboarded && pathname.startsWith('/onboarding')) {
@@ -57,5 +67,6 @@ export const config = {
     '/two-factor',
     '/dashboard/:path*',
     '/onboarding',
+    '/settings/:path*',
   ],
 };

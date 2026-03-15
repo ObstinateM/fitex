@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useSession } from '@/lib/auth-client';
-import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from 'motion/react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 // Animation steps:
 // 0: idle - sidebar shows "Select elements" button, cursor near it
@@ -399,7 +398,7 @@ export function Hero() {
               <>
                 <Link
                   href="/signup"
-                  className="inline-flex items-center justify-center rounded-lg text-base font-medium bg-violet hover:bg-violet-dark text-white px-8 py-6 glow-violet transition-all duration-300 hover:scale-[1.02]"
+                  className="inline-flex items-center justify-center rounded-lg text-base font-medium bg-violet hover:bg-violet-dark text-white px-5 py-2.5 glow-violet transition-all duration-300 hover:scale-[1.02]"
                 >
                   Try free &mdash; no credit card
                 </Link>
