@@ -58,6 +58,20 @@ export class CvController {
     res.send(pdf);
   }
 
+  @Post('tailor')
+  async tailorCv(
+    @Body() body: { jobDescription: string; adjustmentComment?: string },
+    @Req() req: any,
+  ) {
+    if (!body.jobDescription)
+      throw new BadRequestException('jobDescription is required');
+    return this.cvService.tailorCv(
+      req.user.id,
+      body.jobDescription,
+      body.adjustmentComment,
+    );
+  }
+
   @Post('compile-raw')
   async compileRaw(
     @Body() body: { tex: string; includeImages?: boolean },

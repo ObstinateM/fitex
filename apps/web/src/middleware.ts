@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const AUTH_PAGES = ['/login', '/signup', '/two-factor'];
-const PROTECTED_PAGES = ['/dashboard', '/onboarding', '/settings'];
+const PROTECTED_PAGES = ['/dashboard', '/onboarding', '/settings', '/extension-auth'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionToken = request.cookies.get('better-auth.session_token');
 
   const isAuthPage = AUTH_PAGES.some((p) => pathname.startsWith(p));
-  const isProtectedPage = PROTECTED_PAGES.some((p) => pathname.startsWith(p));
+  const isProtectedPage =
+    PROTECTED_PAGES.some((p) => pathname.startsWith(p)) &&
+    pathname !== '/extension-auth/callback';
 
   if (isProtectedPage && !sessionToken) {
     const loginUrl = new URL('/login', request.url);
@@ -68,5 +70,7 @@ export const config = {
     '/dashboard/:path*',
     '/onboarding',
     '/settings/:path*',
+    '/extension-auth',
+    '/extension-auth/callback',
   ],
 };

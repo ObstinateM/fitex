@@ -5,7 +5,7 @@ export default defineConfig({
   manifest: {
     name: 'Fitex',
     description: 'Make your LaTeX CV fit any job description',
-    permissions: ['activeTab', 'storage', 'sidePanel'],
-    host_permissions: ['http://localhost:4000/*'],
+    permissions: ['activeTab', 'storage', 'sidePanel', 'tabs', 'scripting'],
+    host_permissions: ['http://localhost:4000/*', 'http://localhost:3000/*'],
   },
 });

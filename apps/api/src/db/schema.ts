@@ -69,6 +69,16 @@ export const twoFactor = pgTable('two_factor', {
     .references(() => user.id, { onDelete: 'cascade' }),
 });
 
+export const oneTimeToken = pgTable('one_time_token', {
+  id: text('id').primaryKey(),
+  token: text('token').notNull(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
 export const pdfConversionLog = pgTable('pdf_conversion_log', {
   id: text('id').primaryKey(),
   userId: text('user_id')

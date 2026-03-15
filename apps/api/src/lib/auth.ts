@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { twoFactor } from 'better-auth/plugins/two-factor';
 import { bearer } from 'better-auth/plugins/bearer';
+import { oneTimeToken } from 'better-auth/plugins/one-time-token';
 import { db } from '../db/index.js';
 
 export const auth = betterAuth({
@@ -31,5 +32,6 @@ export const auth = betterAuth({
   plugins: [
     twoFactor({ issuer: 'Fitex' }),
     bearer(),
+    oneTimeToken(),
   ],
 });

@@ -8,10 +8,11 @@ import { StripeModule } from './stripe/stripe.module.js';
 import { CreditModule } from './credit/credit.module.js';
 import { EmailModule } from './email/email.module.js';
 import { ImageModule } from './image/image.module.js';
+import { PostHogModule } from './posthog/posthog.module.js';
 import { DebugController } from './debug/debug.controller.js';
 
 @Module({
-  imports: [AuthModule, CvModule, StoryModule, StripeModule, CreditModule, EmailModule, ImageModule],
+  imports: [AuthModule, CvModule, StoryModule, StripeModule, CreditModule, EmailModule, ImageModule, PostHogModule],
   controllers: [AppController, DebugController],
   providers: [AppService],
 })

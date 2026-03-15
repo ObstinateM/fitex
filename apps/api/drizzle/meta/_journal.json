@@ -29,6 +29,13 @@
       "when": 1773897600000,
       "tag": "0003_add_cv_image_table",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1773984000000,
+      "tag": "0004_add_one_time_token_table",
+      "breakpoints": true
     }
   ]
 }
